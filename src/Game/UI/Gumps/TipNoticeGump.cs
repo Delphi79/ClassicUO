@@ -85,19 +85,28 @@ namespace ClassicUO.Game.UI.Gumps
             }
         }
 
+        public override void Update(double totalTime, double frameTime)
+        {
+            base.Update(totalTime, frameTime);
+
+            Height = _background.SpecialHeight;
+
+            _scrollArea.Height = _background.Height - 96;
+        }
 
         public override void OnButtonClick(int buttonID)
         {
             switch (buttonID)
             {
                 case 1: // prev
-                    NetClient.Socket.Send(new PTipRequest((ushort) LocalSerial, 0));
+                    NetClient.Socket.Send_TipRequest((ushort)LocalSerial, 0);
                     Dispose();
 
                     break;
 
                 case 2: // next
-                    NetClient.Socket.Send(new PTipRequest((ushort) LocalSerial, 1));
+                    NetClient.Socket.Send_TipRequest((ushort)LocalSerial, 1);
+
                     Dispose();
 
                     break;

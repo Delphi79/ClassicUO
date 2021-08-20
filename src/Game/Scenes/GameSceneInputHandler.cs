@@ -41,6 +41,7 @@ using ClassicUO.Input;
 using ClassicUO.IO.Resources;
 using ClassicUO.Network;
 using ClassicUO.Resources;
+using ClassicUO.Utility;
 using Microsoft.Xna.Framework;
 using SDL2;
 using MathHelper = ClassicUO.Utility.MathHelper;
@@ -185,7 +186,7 @@ namespace ClassicUO.Game.Scenes
 
             Rectangle rect = useCHB ? new Rectangle(0, 0, HealthBarGumpCustom.HPB_BAR_WIDTH, HealthBarGumpCustom.HPB_HEIGHT_MULTILINE) : GumpsLoader.Instance.GetTexture(0x0804).Bounds;
 
-            foreach (Mobile mobile in World.Mobiles)
+            foreach (Mobile mobile in World.Mobiles.Values)
             {
                 if (ProfileManager.CurrentProfile.DragSelectHumanoidsOnly && !mobile.IsHuman)
                 {
@@ -466,6 +467,20 @@ namespace ClassicUO.Game.Scenes
                         dropX = gobj.X;
                         dropY = gobj.Y;
                         dropZ = gobj.Z;
+
+                        if (gobj is Land land)
+                        {
+
+                        }
+                        else
+                        {
+                            ref StaticTiles itemData = ref TileDataLoader.Instance.StaticData[gobj.Graphic];
+
+                            if (itemData.IsSurface)
+                            {
+                                dropZ += (sbyte)(itemData.Height == 0xFF ? 0 : itemData.Height);
+                            }
+                        }
                     }
                     else
                     {
@@ -597,7 +612,7 @@ namespace ClassicUO.Game.Scenes
                 switch (obj)
                 {
                     case Static st:
-                        string name = st.Name;
+                        string name = StringHelper.GetPluralAdjustedString(st.Name, st.ItemData.Count > 1);
 
                         if (string.IsNullOrEmpty(name))
                         {
@@ -964,8 +979,8 @@ namespace ClassicUO.Game.Scenes
                                 (
                                     customgump = new HealthBarGump(obj)
                                     {
-                                        X = Mouse.Position.X - (rect.Width >> 1),
-                                        Y = Mouse.Position.Y - (rect.Height >> 1)
+                                        X = Mouse.LClickPosition.X - (rect.Width >> 1),
+                                        Y = Mouse.LClickPosition.Y - (rect.Height >> 1)
                                     }
                                 );
                             }
@@ -1024,7 +1039,7 @@ namespace ClassicUO.Game.Scenes
 
                             if (!World.Player.InWarMode)
                             {
-                                NetClient.Socket.Send(new PChangeWarMode(true));
+                                NetClient.Socket.Send_ChangeWarMode(true);
                             }
                         }
                     }
@@ -1307,7 +1322,7 @@ namespace ClassicUO.Game.Scenes
                 {
                     if (_requestedWarMode)
                     {
-                        NetClient.Socket.Send(new PChangeWarMode(false));
+                        NetClient.Socket.Send_ChangeWarMode(false);
                         _requestedWarMode = false;
                     }
                 }

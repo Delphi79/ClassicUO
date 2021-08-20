@@ -66,8 +66,10 @@ namespace ClassicUO.Configuration
         public byte ChatFont { get; set; } = 1;
         public int SpeechDelay { get; set; } = 100;
         public bool ScaleSpeechDelay { get; set; } = true;
-        public bool SaveJournalToFile { get; set; }
+        public bool SaveJournalToFile { get; set; } = true;
         public bool ForceUnicodeJournal { get; set; }
+        public bool IgnoreAllianceMessages { get; set; }
+        public bool IgnoreGuildMessages { get; set; }
 
         // hues
         public ushort SpeechHue { get; set; } = 0x02B2;
@@ -225,6 +227,7 @@ namespace ClassicUO.Configuration
         public int FilterType { get; set; } = 0;
         public bool ShadowsEnabled { get; set; } = true;
         public bool ShadowsStatics { get; set; } = true;
+        public int TerrainShadowsLevel { get; set; } = 15;
         public int AuraUnderFeetType { get; set; } // 0 = NO, 1 = in warmode, 2 = ctrl+shift, 3 = always
         public bool AuraOnMouse { get; set; } = true;
 
@@ -439,125 +442,7 @@ namespace ClassicUO.Configuration
         {
             List<Gump> gumps = new List<Gump>();
 
-
-            // #########################################################
-            // [FILE_FIX]
-            // TODO: this code is a workaround to port old macros to the new xml system.
-            string skillsGroupsPath = Path.Combine(path, "skillsgroups.bin");
-
-            if (File.Exists(skillsGroupsPath))
-            {
-                try
-                {
-                    using (BinaryReader reader = new BinaryReader(File.OpenRead(skillsGroupsPath)))
-                    {
-                        int version = reader.ReadInt32();
-
-                        int groupCount = reader.ReadInt32();
-
-                        for (int i = 0; i < groupCount; i++)
-                        {
-                            int entriesCount = reader.ReadInt32();
-                            string groupName = reader.ReadUTF8String(reader.ReadInt32());
-
-                            SkillsGroup g = new SkillsGroup();
-                            g.Name = groupName;
-
-                            for (int j = 0; j < entriesCount; j++)
-                            {
-                                byte idx = (byte) reader.ReadInt32();
-                                g.Add(idx);
-                            }
-
-                            g.Sort();
-
-                            SkillsGroupManager.Add(g);
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    SkillsGroupManager.MakeDefault();
-                    Log.Error(e.StackTrace);
-                }
-
-
-                SkillsGroupManager.Save();
-
-                try
-                {
-                    File.Delete(skillsGroupsPath);
-                }
-                catch
-                {
-                }
-            }
-
-            string binpath = Path.Combine(path, "gumps.bin");
-
-            if (File.Exists(binpath))
-            {
-                using (BinaryReader reader = new BinaryReader(File.OpenRead(binpath)))
-                {
-                    if (reader.BaseStream.Position + 12 < reader.BaseStream.Length)
-                    {
-                        GumpsVersion = reader.ReadUInt32();
-                        uint empty = reader.ReadUInt32();
-
-                        int count = reader.ReadInt32();
-
-                        for (int i = 0; i < count; i++)
-                        {
-                            try
-                            {
-                                int typeLen = reader.ReadUInt16();
-                                string typeName = reader.ReadUTF8String(typeLen);
-                                int x = reader.ReadInt32();
-                                int y = reader.ReadInt32();
-
-                                Type type = Type.GetType(typeName, true);
-                                Gump gump = (Gump) Activator.CreateInstance(type);
-                                gump.Restore(reader);
-                                gump.X = x;
-                                gump.Y = y;
-
-                                //gump.SetInScreen();
-
-                                if (gump.LocalSerial != 0)
-                                {
-                                    UIManager.SavePosition(gump.LocalSerial, new Point(x, y));
-                                }
-
-                                if (!gump.IsDisposed)
-                                {
-                                    gumps.Add(gump);
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                Log.Error(e.StackTrace);
-                            }
-                        }
-                    }
-                }
-
-                SaveGumps(path);
-
-                gumps.Clear();
-
-                try
-                {
-                    File.Delete(binpath);
-                }
-                catch
-                {
-                }
-            }
-            // #########################################################
-
-
             // load skillsgroup
-            //SkillsGroupManager.Load();
             SkillsGroupManager.Load();
 
             // load gumps

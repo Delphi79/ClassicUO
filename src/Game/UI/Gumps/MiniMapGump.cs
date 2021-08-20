@@ -30,12 +30,14 @@
 
 #endregion
 
+using System;
 using System.IO;
 using System.Xml;
 using ClassicUO.Game.Data;
 using ClassicUO.Game.GameObjects;
 using ClassicUO.Game.Map;
 using ClassicUO.Input;
+using ClassicUO.IO;
 using ClassicUO.IO.Resources;
 using ClassicUO.Renderer;
 using ClassicUO.Utility;
@@ -53,6 +55,8 @@ namespace ClassicUO.Game.UI.Gumps
         private long _timeMS;
         private bool _useLargeMap;
         private ushort _x, _y;
+        private static readonly uint[][] _blankGumpsPixels = new uint[4][];
+        private static PixelPicker _picker = new PixelPicker();
 
         public MiniMapGump() : base(0, 0)
         {
@@ -63,19 +67,6 @@ namespace ClassicUO.Game.UI.Gumps
 
 
         public override GumpType GumpType => GumpType.MiniMap;
-
-        public override void Save(BinaryWriter writer)
-        {
-            base.Save(writer);
-            writer.Write(_useLargeMap);
-        }
-
-        public override void Restore(BinaryReader reader)
-        {
-            base.Restore(reader);
-            _useLargeMap = reader.ReadBoolean();
-            CreateMap();
-        }
 
         public override void Save(XmlTextWriter writer)
         {
@@ -93,6 +84,29 @@ namespace ClassicUO.Game.UI.Gumps
         private void CreateMap()
         {
             _gumpTexture = GumpsLoader.Instance.GetTexture(_useLargeMap ? (ushort) 5011 : (ushort) 5010);
+
+            int index = _useLargeMap ? 1 : 0;
+
+            if (_blankGumpsPixels[index] == null)
+            {
+                int size = _gumpTexture.Width * _gumpTexture.Height;
+                uint[] data = System.Buffers.ArrayPool<uint>.Shared.Rent(size);
+
+                try
+                {
+                    _gumpTexture.GetData(data, 0, size);
+
+                    _blankGumpsPixels[index] = new uint[size];
+                    _blankGumpsPixels[index + 2] = new uint[size];
+
+                    Array.Copy(data, 0, _blankGumpsPixels[index], 0, size);
+                }
+                finally
+                {
+                    System.Buffers.ArrayPool<uint>.Shared.Return(data, true);
+                }
+            }
+
             Width = _gumpTexture.Width;
             Height = _gumpTexture.Height;
             CreateMiniMapTexture(true);
@@ -174,7 +188,7 @@ namespace ClassicUO.Game.UI.Gumps
 
                 Texture2D mobilesTextureDot = SolidColorTextureCache.GetTexture(Color.Red);
 
-                foreach (Mobile mob in World.Mobiles)
+                foreach (Mobile mob in World.Mobiles.Values)
                 {
                     if (mob == World.Player)
                     {
@@ -236,7 +250,7 @@ namespace ClassicUO.Game.UI.Gumps
             CreateMap();
         }
 
-        private void CreateMiniMapTexture(bool force = false)
+        private unsafe void CreateMiniMapTexture(bool force = false)
         {
             if (_gumpTexture == null || _gumpTexture.IsDisposed)
             {
@@ -282,12 +296,17 @@ namespace ClassicUO.Game.UI.Gumps
 
             int maxBlockIndex = World.Map.BlocksCount;
             int mapBlockHeight = MapLoader.Instance.MapBlocksSize[World.MapIndex, 1];
-            uint[] data = GumpsLoader.Instance.GetGumpPixels(_useLargeMap ? (uint) 5011 : 5010, out _, out _);
+            int index = _useLargeMap ? 1 : 0;
 
-            Point[] table = new Point[2]
-            {
-                new Point(0, 0), new Point(0, 1)
-            };
+            _blankGumpsPixels[index].CopyTo(_blankGumpsPixels[index + 2], 0);
+          
+            uint[] data = _blankGumpsPixels[index + 2];
+
+            Point* table = stackalloc Point[2];
+            table[0].X = 0;
+            table[0].Y = 0;
+            table[1].X = 0;
+            table[1].Y = 1;
 
             for (int i = minBlockX; i <= maxBlockX; i++)
             {
@@ -393,10 +412,11 @@ namespace ClassicUO.Game.UI.Gumps
                 _mapTexture = new UOTexture(Width, Height);
             }
 
-            _mapTexture.PushData(data);
+            _mapTexture.SetData(data);
+            _picker.Set((ulong) index, Width, Height, data);
         }
 
-        private void CreatePixels
+        private unsafe void CreatePixels
         (
             uint[] data,
             int color,
@@ -404,7 +424,7 @@ namespace ClassicUO.Game.UI.Gumps
             int y,
             int w,
             int h,
-            Point[] table,
+            Point* table,
             int count
         )
         {
@@ -414,7 +434,6 @@ namespace ClassicUO.Game.UI.Gumps
             for (int i = 0; i < count; i++)
             {
                 px += table[i].X;
-
                 py += table[i].Y;
 
                 int gx = px;
@@ -442,7 +461,7 @@ namespace ClassicUO.Game.UI.Gumps
 
         public override bool Contains(int x, int y)
         {
-            return _mapTexture.Contains(x - Offset.X, y - Offset.Y);
+            return _picker.Get((ulong) (_useLargeMap ? 0x01 : 0x00), x - Offset.X, y - Offset.Y);
         }
 
         public override void Dispose()

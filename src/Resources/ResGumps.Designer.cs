@@ -340,6 +340,51 @@ namespace ClassicUO.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Select Character Backpack Style.
+        /// </summary>
+        public static string BackpackStyle {
+            get {
+                return ResourceManager.GetString("BackpackStyle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Default.
+        /// </summary>
+        public static string BackpackStyle_Default {
+            get {
+                return ResourceManager.GetString("BackpackStyle_Default", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to GhoulSkin.
+        /// </summary>
+        public static string BackpackStyle_GhoulSkin {
+            get {
+                return ResourceManager.GetString("BackpackStyle_GhoulSkin", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to PolarBear.
+        /// </summary>
+        public static string BackpackStyle_PolarBear {
+            get {
+                return ResourceManager.GetString("BackpackStyle_PolarBear", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Suede.
+        /// </summary>
+        public static string BackpackStyle_Suede {
+            get {
+                return ResourceManager.GetString("BackpackStyle_Suede", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Backup.
         /// </summary>
         public static string Backup {
@@ -376,7 +421,7 @@ namespace ClassicUO.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Book page {0} single line too LONG, total lenght -&gt; {1} vs MAX 79 bytes allowed, some content might get lost.
+        ///   Looks up a localized string similar to Book page {0} single line too LONG, total length -&gt; {1} vs MAX 79 bytes allowed, some content might get lost.
         /// </summary>
         public static string BookPage0LineTooLong1 {
             get {
@@ -1574,7 +1619,7 @@ namespace ClassicUO.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Hide Chat Gradient.
+        ///   Looks up a localized string similar to Hide chat gradient.
         /// </summary>
         public static string HideChatGradient {
             get {
@@ -1795,6 +1840,24 @@ namespace ClassicUO.Resources {
         public static string HPType_None {
             get {
                 return ResourceManager.GetString("HPType_None", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hide alliance chat.
+        /// </summary>
+        public static string IgnoreAllianceMessages {
+            get {
+                return ResourceManager.GetString("IgnoreAllianceMessages", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hide guild chat.
+        /// </summary>
+        public static string IgnoreGuildMessages {
+            get {
+                return ResourceManager.GetString("IgnoreGuildMessages", resourceCulture);
             }
         }
         
@@ -2450,7 +2513,7 @@ namespace ClassicUO.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to {0}has invited you to join a party..
+        ///   Looks up a localized string similar to {0} has invited you to join a party..
         /// </summary>
         public static string P0HasInvitedYouToParty {
             get {
@@ -2762,6 +2825,15 @@ namespace ClassicUO.Resources {
         public static string ReproduceSoundsAndMusic {
             get {
                 return ResourceManager.GetString("ReproduceSoundsAndMusic", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reset groups.
+        /// </summary>
+        public static string ResetGroups {
+            get {
+                return ResourceManager.GetString("ResetGroups", resourceCulture);
             }
         }
         
@@ -3509,6 +3581,15 @@ namespace ClassicUO.Resources {
         public static string TellEmpty {
             get {
                 return ResourceManager.GetString("TellEmpty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Terrain shadows level:.
+        /// </summary>
+        public static string TerrainShadowsLevel {
+            get {
+                return ResourceManager.GetString("TerrainShadowsLevel", resourceCulture);
             }
         }
         

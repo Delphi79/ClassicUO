@@ -42,6 +42,13 @@ using static ClassicUO.Network.NetClient;
 
 namespace ClassicUO.Game.GameObjects
 {
+    enum HitsRequestStatus
+    {
+        None,
+        Pending,
+        Received
+    }
+
     internal abstract class Entity : GameObject, IEquatable<Entity>
     {
         private Direction _direction;
@@ -87,8 +94,8 @@ namespace ClassicUO.Game.GameObjects
         public string Name;
         public uint Serial;
 
-        protected long LastAnimationChangeTime;
-
+        internal long LastAnimationChangeTime;
+        public HitsRequestStatus HitsRequest;
 
         public void FixHue(ushort hue)
         {
@@ -151,7 +158,7 @@ namespace ClassicUO.Game.GameObjects
                 //but all servers tested (latest POL, old POL, ServUO, Outlands) do.
                 if ( /*Client.Version > ClientVersion.CV_200 &&*/ SerialHelper.IsMobile(Serial))
                 {
-                    Socket.Send(new PNameRequest(Serial));
+                    Socket.Send_NameRequest(Serial);
                 }
 
                 UIManager.Add(new NameOverheadGump(this));
@@ -183,10 +190,7 @@ namespace ClassicUO.Game.GameObjects
         {
             base.Destroy();
 
-            if (HitsMax != 0)
-            {
-                GameActions.SendCloseStatus(Serial);
-            }
+            GameActions.SendCloseStatus(Serial, HitsRequest >= HitsRequestStatus.Pending);
 
             AnimIndex = 0;
             LastAnimationChangeTime = 0;

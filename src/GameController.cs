@@ -61,7 +61,7 @@ namespace ClassicUO
 
         private SDL_EventFilter _filter;
 
-        private readonly Texture2D[] _hueSamplers = new Texture2D[2];
+        private readonly Texture2D[] _hueSamplers = new Texture2D[3];
         private bool _ignoreNextTextInput;
         private readonly float[] _intervalFixedUpdate = new float[2];
         private double _statisticsTimer;
@@ -120,21 +120,46 @@ namespace ClassicUO
             const int TEXTURE_WIDTH = 32;
             const int TEXTURE_HEIGHT = 2048;
 
-            uint[] buffer = new uint[TEXTURE_WIDTH * TEXTURE_HEIGHT * 2];
-            HuesLoader.Instance.CreateShaderColors(buffer);
+            const int LIGHTS_TEXTURE_WIDTH = 32;
+            const int LIGHTS_TEXTURE_HEIGHT = 63;
 
-            _hueSamplers[0] = new Texture2D(GraphicsDevice, TEXTURE_WIDTH, TEXTURE_HEIGHT);
+            uint[] buffer = System.Buffers.ArrayPool<uint>.Shared.Rent(TEXTURE_WIDTH * TEXTURE_HEIGHT * 2);
 
-            _hueSamplers[0].SetData(buffer, 0, TEXTURE_WIDTH * TEXTURE_HEIGHT);
+            try
+            {
+                 HuesLoader.Instance.CreateShaderColors(buffer);
 
-            _hueSamplers[1] = new Texture2D(GraphicsDevice, TEXTURE_WIDTH, TEXTURE_HEIGHT);
+                _hueSamplers[0] = new Texture2D(GraphicsDevice, TEXTURE_WIDTH, TEXTURE_HEIGHT);
+                _hueSamplers[0].SetData(buffer, 0, TEXTURE_WIDTH * TEXTURE_HEIGHT);
 
-            _hueSamplers[1].SetData(buffer, TEXTURE_WIDTH * TEXTURE_HEIGHT, TEXTURE_WIDTH * TEXTURE_HEIGHT);
+                _hueSamplers[1] = new Texture2D(GraphicsDevice, TEXTURE_WIDTH, TEXTURE_HEIGHT);
+                _hueSamplers[1].SetData(buffer, TEXTURE_WIDTH * TEXTURE_HEIGHT, TEXTURE_WIDTH * TEXTURE_HEIGHT);
+            }
+            finally
+            {
+                System.Buffers.ArrayPool<uint>.Shared.Return(buffer, true);
+            }
+
+
+            buffer = System.Buffers.ArrayPool<uint>.Shared.Rent(LIGHTS_TEXTURE_WIDTH * LIGHTS_TEXTURE_HEIGHT);
+
+            try
+            {
+                LightColors.CreateLookupTables(buffer);
+
+                _hueSamplers[2] = new Texture2D(GraphicsDevice, LIGHTS_TEXTURE_WIDTH, LIGHTS_TEXTURE_HEIGHT);
+                _hueSamplers[2].SetData(buffer, 0, LIGHTS_TEXTURE_WIDTH * LIGHTS_TEXTURE_HEIGHT);
+            }
+            finally
+            {
+                System.Buffers.ArrayPool<uint>.Shared.Return(buffer, true);
+            }
+           
 
             GraphicsDevice.Textures[1] = _hueSamplers[0];
             GraphicsDevice.Textures[2] = _hueSamplers[1];
+            GraphicsDevice.Textures[3] = _hueSamplers[2];
 
-            AuraManager.CreateAuraTexture();
             UIManager.InitializeGameCursor();
             AnimatedStaticsManager.Initialize();
 
@@ -611,7 +636,7 @@ namespace ClassicUO
                     {
                         TakeScreenshot();
                     }
-
+                    
                     break;
 
                 case SDL_EventType.SDL_TEXTINPUT:
@@ -622,10 +647,14 @@ namespace ClassicUO
                     }
 
                     // Fix for linux OS: https://github.com/andreakarasho/ClassicUO/pull/1263
-                    if (Keyboard.Alt || Keyboard.Ctrl)
+                    // Fix 2: SDL owns this behaviour. Cheating is not a real solution.
+                    /*if (!Utility.Platforms.PlatformHelper.IsWindows)
                     {
-                        break;
-                    }
+                        if (Keyboard.Alt || Keyboard.Ctrl)
+                        {
+                            break;
+                        }
+                    }*/
 
                     string s = UTF8_ToManaged((IntPtr) sdlEvent->text.text, false);
 
@@ -677,8 +706,6 @@ namespace ClassicUO
 
                 case SDL_EventType.SDL_MOUSEBUTTONDOWN:
                 {
-                    Mouse.Update();
-
                     SDL_MouseButtonEvent mouse = sdlEvent->button;
 
                     // The values in MouseButtonType are chosen to exactly match the SDL values
@@ -702,9 +729,16 @@ namespace ClassicUO
                             lastClickTime = Mouse.LastRightButtonClickTime;
 
                             break;
+
+                        default: 
+                            Log.Warn($"No mouse button handled: {mouse.button}");
+
+                            break;
                     }
 
                     Mouse.ButtonPress(buttonType);
+                    Mouse.Update();
+
                     uint ticks = Time.Ticks;
 
                     if (lastClickTime + Mouse.MOUSE_DELAY_DOUBLE_CLICK >= ticks)
@@ -763,8 +797,6 @@ namespace ClassicUO
 
                 case SDL_EventType.SDL_MOUSEBUTTONUP:
                 {
-                    Mouse.Update();
-
                     if (_dragStarted)
                     {
                         _dragStarted = false;
@@ -793,7 +825,12 @@ namespace ClassicUO
                             lastClickTime = Mouse.LastRightButtonClickTime;
 
                             break;
-                    }
+
+                        default:
+                            Log.Warn($"No mouse button handled: {mouse.button}");
+
+                            break;
+                        }
 
                     if (lastClickTime != 0xFFFF_FFFF)
                     {
@@ -804,6 +841,7 @@ namespace ClassicUO
                     }
 
                     Mouse.ButtonRelease(buttonType);
+                    Mouse.Update();
 
                     break;
                 }

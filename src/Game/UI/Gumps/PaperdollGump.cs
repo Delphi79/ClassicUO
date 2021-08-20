@@ -433,17 +433,24 @@ namespace ClassicUO.Game.UI.Gumps
         {
             if (args.Button == MouseButtonType.Left)
             {
-                PartyGump party = UIManager.GetGump<PartyGump>();
-
-                if (party == null)
+                if (CUOEnviroment.IsOutlands)
                 {
-                    int x = Client.Game.Window.ClientBounds.Width / 2 - 272;
-                    int y = Client.Game.Window.ClientBounds.Height / 2 - 240;
-                    UIManager.Add(new PartyGump(x, y, World.Party.CanLoot));
+                    NetClient.Socket.Send_ASCIISpeechRequest("party", MessageType.Command, 0, 0);
                 }
                 else
                 {
-                    party.BringOnTop();
+                    PartyGump party = UIManager.GetGump<PartyGump>();
+
+                    if (party == null)
+                    {
+                        int x = Client.Game.Window.ClientBounds.Width / 2 - 272;
+                        int y = Client.Game.Window.ClientBounds.Height / 2 - 240;
+                        UIManager.Add(new PartyGump(x, y, World.Party.CanLoot));
+                    }
+                    else
+                    {
+                        party.BringOnTop();
+                    }
                 }
             }
         }
@@ -569,35 +576,6 @@ namespace ClassicUO.Game.UI.Gumps
             }
         }
 
-        public override void Save(BinaryWriter writer)
-        {
-            base.Save(writer);
-            writer.Write(LocalSerial);
-            writer.Write(IsMinimized);
-        }
-
-        public override void Restore(BinaryReader reader)
-        {
-            base.Restore(reader);
-
-            if (Profile.GumpsVersion == 2)
-            {
-                reader.ReadUInt32();
-                _isMinimized = reader.ReadBoolean();
-            }
-
-            LocalSerial = reader.ReadUInt32();
-
-            Client.Game.GetScene<GameScene>().DoubleClickDelayed(LocalSerial);
-
-            if (Profile.GumpsVersion >= 3)
-            {
-                _isMinimized = reader.ReadBoolean();
-            }
-
-            Dispose();
-        }
-
         public override void Save(XmlTextWriter writer)
         {
             base.Save(writer);
@@ -611,15 +589,12 @@ namespace ClassicUO.Game.UI.Gumps
 
             if (LocalSerial == World.Player)
             {
-                LocalSerial = World.Player;
                 BuildGump();
 
+                //GameActions.DoubleClick(0x8000_0000 | LocalSerial);
                 Client.Game.GetScene<GameScene>()?.DoubleClickDelayed(LocalSerial);
 
-                //GameActions.OpenPaperdoll(World.Player);
                 IsMinimized = bool.Parse(xml.GetAttribute("isminimized"));
-
-                Dispose();
             }
             else
             {

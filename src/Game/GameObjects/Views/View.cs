@@ -43,7 +43,6 @@ namespace ClassicUO.Game.GameObjects
 {
     internal abstract partial class GameObject
     {
-        protected static Vector3 HueVector;
         public static bool DrawTransparent;
 
         protected static readonly Lazy<DepthStencilState> StaticTransparentStencil = new Lazy<DepthStencilState>
@@ -75,16 +74,9 @@ namespace ClassicUO.Game.GameObjects
         protected bool IsFlipped;
 
 
-        public abstract bool Draw(UltimaBatcher2D batcher, int posX, int posY);
+        public abstract bool Draw(UltimaBatcher2D batcher, int posX, int posY, ref Vector3 hue);
 
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected static void ResetHueVector()
-        {
-            HueVector.X = 0;
-            HueVector.Y = 0;
-            HueVector.Z = 0;
-        }
 
         public Rectangle GetOnScreenRectangle()
         {
@@ -171,11 +163,11 @@ namespace ClassicUO.Game.GameObjects
             ushort graphic,
             int x,
             int y,
-            ref Rectangle rectangle,
-            ref Vector3 n0,
-            ref Vector3 n1,
-            ref Vector3 n2,
-            ref Vector3 n3,
+            ref UltimaBatcher2D.YOffsets yOffsets,
+            ref Vector3 nTop,
+            ref Vector3 nRight,
+            ref Vector3 nLeft,
+            ref Vector3 nBottom,
             ref Vector3 hue
         )
         {
@@ -190,11 +182,11 @@ namespace ClassicUO.Game.GameObjects
                     texture,
                     x,
                     y,
-                    ref rectangle,
-                    ref n0,
-                    ref n1,
-                    ref n2,
-                    ref n3,
+                    ref yOffsets,
+                    ref nTop,
+                    ref nRight,
+                    ref nLeft,
+                    ref nBottom,
                     ref hue
                 );
             }
@@ -256,8 +248,6 @@ namespace ClassicUO.Game.GameObjects
             ushort graphic,
             int x,
             int y,
-            int destX,
-            int destY,
             float angle,
             ref Vector3 hue
         )
@@ -270,16 +260,13 @@ namespace ClassicUO.Game.GameObjects
 
                 ref UOFileIndex index = ref ArtLoader.Instance.GetValidRefEntry(graphic + 0x4000);
 
-                int offX = index.Width == 0 ? -44 : index.Width;
-                int offY = index.Height == 0 ? -22 : index.Height;
-
                 batcher.DrawSpriteRotated
                 (
                     texture,
-                    x - offX,
-                    y - offY,
-                    destX,
-                    destY,
+                    x - index.Width,
+                    y - index.Height,
+                    texture.Width,
+                    texture.Height,
                     ref hue,
                     angle
                 );
@@ -310,10 +297,10 @@ namespace ClassicUO.Game.GameObjects
 
                 if (transparent)
                 {
-                    int maxDist = ProfileManager.CurrentProfile.CircleOfTransparencyRadius + 22;
-                    int fx = (int) (World.Player.RealScreenPosition.X + World.Player.Offset.X);
+                    int maxDist = ProfileManager.CurrentProfile.CircleOfTransparencyRadius;
 
-                    int fy = (int) (World.Player.RealScreenPosition.Y + (World.Player.Offset.Y - World.Player.Offset.Z)) + 44;
+                    int fx = (int) (World.Player.RealScreenPosition.X + World.Player.Offset.X);
+                    int fy = (int) (World.Player.RealScreenPosition.Y + (World.Player.Offset.Y - World.Player.Offset.Z));
 
                     fx -= x;
                     fy -= y;
@@ -333,7 +320,11 @@ namespace ClassicUO.Game.GameObjects
                                 break;
 
                             case 1:
-                                hue.Z = MathHelper.Lerp(1f, 0f, (dist - 44) / maxDist);
+
+                                float delta = (maxDist - 44) * 0.5f;
+                                float fraction = (dist - delta) / (maxDist - delta);
+
+                                hue.Z = MathHelper.Lerp(1f, 0f, fraction);
 
                                 break;
                         }

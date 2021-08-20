@@ -259,7 +259,7 @@ namespace ClassicUO.Game.UI.Gumps
             {
                 case MessageType.Regular when e.Parent == null || !SerialHelper.IsValid(e.Parent.Serial):
                 case MessageType.System:
-                    if (!string.IsNullOrEmpty(e.Name) && e.Name.ToLowerInvariant() != "system")
+                    if (!string.IsNullOrEmpty(e.Name) && !e.Name.Equals("system", StringComparison.InvariantCultureIgnoreCase))
                     {
                         AddLine($"{e.Name}: {e.Text}", e.Font, e.Hue, e.IsUnicode);
                     }
@@ -287,6 +287,18 @@ namespace ClassicUO.Game.UI.Gumps
 
                 case MessageType.Alliance:
                     AddLine(string.Format(ResGumps.AllianceName0Text1, e.Name, e.Text), e.Font, ProfileManager.CurrentProfile.AllyMessageHue, e.IsUnicode);
+
+                    break;
+
+                default:
+
+                    if (e.Parent == null || !SerialHelper.IsValid(e.Parent.Serial))
+                    {
+                        if (string.IsNullOrEmpty(e.Name) || e.Name.Equals("system", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            AddLine(e.Text, e.Font, e.Hue, e.IsUnicode);
+                        }
+                    }
 
                     break;
             }
@@ -494,7 +506,7 @@ namespace ClassicUO.Game.UI.Gumps
 
                     if (!IsActive)
                     {
-                        IsActive = true;
+                        return;
                     }
 
                     if (_messageHistoryIndex > 0)
@@ -524,7 +536,7 @@ namespace ClassicUO.Game.UI.Gumps
 
                     if (!IsActive)
                     {
-                        IsActive = true;
+                        return;
                     }
 
                     if (_messageHistoryIndex < _messageHistory.Count - 1)
@@ -551,11 +563,11 @@ namespace ClassicUO.Game.UI.Gumps
 
                     if (MessageManager.PromptData.Prompt == ConsolePrompt.ASCII)
                     {
-                        NetClient.Socket.Send(new PASCIIPromptResponse(string.Empty, true));
+                        NetClient.Socket.Send_ASCIIPromptResponse(string.Empty, true);
                     }
                     else if (MessageManager.PromptData.Prompt == ConsolePrompt.Unicode)
                     {
-                        NetClient.Socket.Send(new PUnicodePromptResponse(string.Empty, "ENU", true));
+                        NetClient.Socket.Send_UnicodePromptResponse(string.Empty, Settings.GlobalSettings.Language, true);
                     }
 
                     MessageManager.PromptData = default;
@@ -589,11 +601,11 @@ namespace ClassicUO.Game.UI.Gumps
             {
                 if (MessageManager.PromptData.Prompt == ConsolePrompt.ASCII)
                 {
-                    NetClient.Socket.Send(new PASCIIPromptResponse(text, text.Length < 1));
+                    NetClient.Socket.Send_ASCIIPromptResponse(text, text.Length < 1);
                 }
                 else if (MessageManager.PromptData.Prompt == ConsolePrompt.Unicode)
                 {
-                    NetClient.Socket.Send(new PUnicodePromptResponse(text, "ENU", text.Length < 1));
+                    NetClient.Socket.Send_UnicodePromptResponse(text, Settings.GlobalSettings.Language, text.Length < 1);
                 }
 
                 MessageManager.PromptData = default;
@@ -727,7 +739,7 @@ namespace ClassicUO.Game.UI.Gumps
 
                                 if (World.Party.Leader == 0 && World.Party.Inviter != 0)
                                 {
-                                    NetClient.Socket.Send(new PPartyDecline(World.Party.Inviter));
+                                    NetClient.Socket.Send_PartyDecline(World.Party.Inviter);
                                     World.Party.Leader = 0;
                                     World.Party.Inviter = 0;
                                 }
@@ -814,7 +826,7 @@ namespace ClassicUO.Game.UI.Gumps
                         break;
 
                     case ChatMode.UOChat:
-                        NetClient.Socket.Send(new PChatMessageCommand(text));
+                        NetClient.Socket.Send_ChatMessageCommand(text);
 
                         break;
                 }

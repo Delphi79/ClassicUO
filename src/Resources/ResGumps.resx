@@ -484,7 +484,7 @@
     <value>Use xBR effect [BETA]</value>
   </data>
   <data name="HideChatGradient" xml:space="preserve">
-    <value>Hide Chat Gradient</value>
+    <value>Hide chat gradient</value>
   </data>
   <data name="NewMacro" xml:space="preserve">
     <value>New macro</value>
@@ -766,7 +766,7 @@ when amount is or exceeds</value>
     <value>Book page {0} split into too many lines: {1} Additional lines will be lost</value>
   </data>
   <data name="BookPage0LineTooLong1" xml:space="preserve">
-    <value>Book page {0} single line too LONG, total lenght -&gt; {1} vs MAX 79 bytes allowed, some content might get lost</value>
+    <value>Book page {0} single line too LONG, total length -&gt; {1} vs MAX 79 bytes allowed, some content might get lost</value>
   </data>
   <data name="TimeLeft" xml:space="preserve">
     <value>{0}
@@ -992,7 +992,7 @@ Time left: {1:00}:{2:00}:{3:00}</value>
     <value>Decline</value>
   </data>
   <data name="P0HasInvitedYouToParty" xml:space="preserve">
-    <value>{0}has invited you to join a party.</value>
+    <value>{0} has invited you to join a party.</value>
   </data>
   <data name="NoName" xml:space="preserve">
     <value>No Name</value>
@@ -1425,5 +1425,32 @@ Client version: '{0}'</value>
   </data>
   <data name="ShadowStatics" xml:space="preserve">
     <value>Show tree and rock shadows</value>
+  </data>
+  <data name="BackpackStyle" xml:space="preserve">
+    <value>Select Character Backpack Style</value>
+  </data>
+  <data name="BackpackStyle_Default" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="BackpackStyle_Suede" xml:space="preserve">
+    <value>Suede</value>
+  </data>
+  <data name="BackpackStyle_PolarBear" xml:space="preserve">
+    <value>PolarBear</value>
+  </data>
+  <data name="BackpackStyle_GhoulSkin" xml:space="preserve">
+    <value>GhoulSkin</value>
+  </data>
+  <data name="ResetGroups" xml:space="preserve">
+    <value>Reset groups</value>
+  </data>
+  <data name="TerrainShadowsLevel" xml:space="preserve">
+    <value>Terrain shadows level:</value>
+  </data>
+  <data name="IgnoreGuildMessages" xml:space="preserve">
+    <value>Hide guild chat</value>
+  </data>
+  <data name="IgnoreAllianceMessages" xml:space="preserve">
+    <value>Hide alliance chat</value>
   </data>
 </root>

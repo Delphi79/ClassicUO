@@ -210,8 +210,8 @@ namespace ClassicUO.Game.UI.Gumps
 
                         RacialAbilityButton gump = new RacialAbilityButton((ushort) ((GumpPic) sender).LocalSerial)
                         {
-                            X = Mouse.Position.X - 20,
-                            Y = Mouse.Position.Y - 20
+                            X = Mouse.LClickPosition.X - 20,
+                            Y = Mouse.LClickPosition.Y - 20
                         };
 
                         UIManager.Add(gump);
@@ -222,7 +222,7 @@ namespace ClassicUO.Game.UI.Gumps
                     {
                         if ((ushort) ((GumpPic) sender).LocalSerial == 0x5DDA && World.Player.Race == RaceType.GARGOYLE)
                         {
-                            NetClient.Socket.Send(new PToggleGargoyleFlying());
+                            NetClient.Socket.Send_ToggleGargoyleFlying();
                             e.Result = true;
                         }
                     };

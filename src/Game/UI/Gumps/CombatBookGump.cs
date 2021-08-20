@@ -289,10 +289,10 @@ namespace ClassicUO.Game.UI.Gumps
 
             GetSpellFloatingButton(def.Index)?.Dispose();
 
-            UseAbilityButtonGump gump = new UseAbilityButtonGump(def.Index, true)
+            UseAbilityButtonGump gump = new UseAbilityButtonGump(true)
             {
-                X = Mouse.Position.X - 22,
-                Y = Mouse.Position.Y - 22
+                X = Mouse.LClickPosition.X - 22,
+                Y = Mouse.LClickPosition.Y - 22
             };
 
             UIManager.Add(gump);
@@ -310,10 +310,10 @@ namespace ClassicUO.Game.UI.Gumps
 
             GetSpellFloatingButton(def.Index)?.Dispose();
 
-            UseAbilityButtonGump gump = new UseAbilityButtonGump(def.Index, false)
+            UseAbilityButtonGump gump = new UseAbilityButtonGump(false)
             {
-                X = Mouse.Position.X - 22,
-                Y = Mouse.Position.Y - 22
+                X = Mouse.LClickPosition.X - 22,
+                Y = Mouse.LClickPosition.Y - 22
             };
 
             UIManager.Add(gump);

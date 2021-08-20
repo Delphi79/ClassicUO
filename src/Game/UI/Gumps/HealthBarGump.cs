@@ -63,7 +63,7 @@ namespace ClassicUO.Game.UI.Gumps
                 return;
             }
 
-            GameActions.RequestMobileStatus(entity.Serial);
+            GameActions.RequestMobileStatus(entity.Serial, true);
             LocalSerial = entity.Serial;
             CanCloseWithRightClick = true;
             _name = entity.Name;
@@ -106,35 +106,15 @@ namespace ClassicUO.Game.UI.Gumps
 
         public override void Dispose()
         {
-            GameActions.SendCloseStatus(LocalSerial);
-
+            /*if (TargetManager.LastAttack != LocalSerial)
+            {
+                GameActions.SendCloseStatus(LocalSerial);
+            }*/
+            
             _textBox?.Dispose();
             _textBox = null;
             base.Dispose();
         }
-
-        public override void Save(BinaryWriter writer)
-        {
-            base.Save(writer);
-            writer.Write(LocalSerial);
-        }
-
-        public override void Restore(BinaryReader reader)
-        {
-            base.Restore(reader);
-            LocalSerial = reader.ReadUInt32();
-
-            if (LocalSerial == World.Player)
-            {
-                _name = World.Player.Name;
-                BuildGump();
-            }
-            else
-            {
-                Dispose();
-            }
-        }
-
 
         public override void Save(XmlTextWriter writer)
         {
@@ -145,7 +125,6 @@ namespace ClassicUO.Game.UI.Gumps
                 writer.WriteAttributeString("name", _name);
             }
         }
-
 
         public override void Restore(XmlElement xml)
         {
@@ -459,7 +438,11 @@ namespace ClassicUO.Game.UI.Gumps
                     _outOfRange = true;
                     textColor = 912;
 
-
+                    if (TargetManager.LastAttack != LocalSerial)
+                    {
+                        GameActions.SendCloseStatus(LocalSerial);
+                    }
+                    
                     if (inparty)
                     {
                         if (_textBox != null && _textBox.Hue != textColor)
@@ -510,6 +493,8 @@ namespace ClassicUO.Game.UI.Gumps
 
             if (entity != null && !entity.IsDestroyed)
             {
+                _hpLineRed.IsVisible = entity.HitsMax > 0;
+
                 Mobile mobile = entity as Mobile;
 
                 if (!_isDead && entity != World.Player && mobile != null && mobile.IsDead && ProfileManager.CurrentProfile.CloseHealthBarType == 2) // is dead
@@ -1648,6 +1633,11 @@ namespace ClassicUO.Game.UI.Gumps
 
                     _outOfRange = true;
 
+                    if (TargetManager.LastAttack != LocalSerial)
+                    {
+                        GameActions.SendCloseStatus(LocalSerial);
+                    }
+
                     if (inparty)
                     {
                         hitsColor = textColor = 912;
@@ -1700,6 +1690,8 @@ namespace ClassicUO.Game.UI.Gumps
 
             if (entity != null && !entity.IsDestroyed)
             {
+                _hpLineRed.IsVisible = entity.HitsMax > 0;
+
                 Mobile mobile = entity as Mobile;
 
                 if (!_isDead && entity != World.Player && mobile != null && mobile.IsDead && ProfileManager.CurrentProfile.CloseHealthBarType == 2) // is dead
