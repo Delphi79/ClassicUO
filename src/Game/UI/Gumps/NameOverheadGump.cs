@@ -128,7 +128,7 @@ namespace ClassicUO.Game.UI.Gumps
                     t = FontsLoader.Instance.GetTextByWidthUnicode
                     (
                         _renderedText.Font,
-                        t,
+                        t.AsSpan(),
                         Constants.OBJECT_HANDLES_GUMP_WIDTH,
                         true,
                         TEXT_ALIGN_TYPE.TS_CENTER,
@@ -163,7 +163,7 @@ namespace ClassicUO.Game.UI.Gumps
                     t = FontsLoader.Instance.GetTextByWidthUnicode
                     (
                         _renderedText.Font,
-                        t,
+                        t.AsSpan(),
                         Constants.OBJECT_HANDLES_GUMP_WIDTH,
                         true,
                         TEXT_ALIGN_TYPE.TS_CENTER,
@@ -201,7 +201,7 @@ namespace ClassicUO.Game.UI.Gumps
 
             Add
             (
-                _background = new AlphaBlendControl(.3f)
+                _background = new AlphaBlendControl(.7f)
                 {
                     WantUpdateSize = false,
                     Hue = entity is Mobile m ? Notoriety.GetHue(m.NotorietyFlag) : (ushort) 0x0481
@@ -215,7 +215,7 @@ namespace ClassicUO.Game.UI.Gumps
 
             if (entity != null)
             {
-                entity.ClosedObjectHandles = true;
+                entity.ObjectHandlesStatus = ObjectHandlesStatus.CLOSED;
             }
 
             base.CloseWithRightClick();
@@ -257,14 +257,14 @@ namespace ClassicUO.Game.UI.Gumps
                 }
                 else
                 {
-                    Rectangle rect = GumpsLoader.Instance.GetTexture(0x0804).Bounds;
+                    _ = GumpsLoader.Instance.GetGumpTexture(0x0804, out var bounds);
 
                     UIManager.Add
                     (
                         gump = new HealthBarGump(entity)
                         {
-                            X = Mouse.LClickPosition.X - (rect.Width >> 1),
-                            Y = Mouse.LClickPosition.Y - (rect.Height >> 1)
+                            X = Mouse.LClickPosition.X - (bounds.Width >> 1),
+                            Y = Mouse.LClickPosition.Y - (bounds.Height >> 1)
                         }
                     );
                 }
@@ -485,7 +485,7 @@ namespace ClassicUO.Game.UI.Gumps
 
             Entity entity = World.Get(LocalSerial);
 
-            if (entity == null || entity.IsDestroyed || !entity.UseObjectHandles || entity.ClosedObjectHandles)
+            if (entity == null || entity.IsDestroyed || entity.ObjectHandlesStatus == ObjectHandlesStatus.NONE || entity.ObjectHandlesStatus == ObjectHandlesStatus.CLOSED)
             {
                 Dispose();
             }
@@ -567,23 +567,14 @@ namespace ClassicUO.Game.UI.Gumps
                     return false;
                 }
 
-                ArtTexture texture = ArtLoader.Instance.GetTexture(item.Graphic);
+                var bounds = ArtLoader.Instance.GetRealArtBounds(item.Graphic);
 
-                if (texture != null)
-                {
-                    x = item.RealScreenPosition.X + (int) item.Offset.X + 22 + 5;
-
-                    y = item.RealScreenPosition.Y + (int) (item.Offset.Y - item.Offset.Z) + (texture.ImageRectangle.Height >> 1);
-                }
-                else
-                {
-                    x = item.RealScreenPosition.X + (int) item.Offset.X + 22 + 5;
-                    y = item.RealScreenPosition.Y + (int) (item.Offset.Y - item.Offset.Z) + 22;
-                }
+                x = item.RealScreenPosition.X + (int)item.Offset.X + 22 + 5;
+                y = item.RealScreenPosition.Y + (int)(item.Offset.Y - item.Offset.Z) + (bounds.Height >> 1);
             }
 
 
-            ResetHueVector();
+            Vector3 hueVector = ShaderHueTranslator.GetHueVector(0);
 
             Point p = Client.Game.Scene.Camera.WorldToScreen(new Point(x, y));
             x = p.X - (Width >> 1);
@@ -612,7 +603,7 @@ namespace ClassicUO.Game.UI.Gumps
                 y - 1,
                 Width + 1,
                 Height + 1,
-                ref HueVector
+                hueVector
             );
 
             base.Draw(batcher, x, y);

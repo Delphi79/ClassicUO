@@ -396,7 +396,6 @@ namespace ClassicUO.Game.UI.Gumps.Login
             int htmlX = 130;
             int htmlY = 442;
 
-            //Add(new NiceButton(){ });
 
             Add
             (
@@ -409,7 +408,7 @@ namespace ClassicUO.Game.UI.Gumps.Login
                     false,
                     false,
                     false,
-                    "<body link=\"#ad9413\" vlink=\"#00FF00\" ><a href=\"https://www.paypal.me/muskara\">Click to donate PayPal",
+                    "<body link=\"#FF00FF00\" vlink=\"#FF00FF00\" ><a href=\"https://www.classicuo.eu/support.php\">Support ClassicUO!",
                     0x32,
                     true,
                     isunicode: true,
@@ -417,26 +416,7 @@ namespace ClassicUO.Game.UI.Gumps.Login
                 )
             );
 
-            Add
-            (
-                new HtmlControl
-                (
-                    htmlX,
-                    htmlY + 20,
-                    150,
-                    15,
-                    false,
-                    false,
-                    false,
-                    "<body link=\"#ad9413\" vlink=\"#00FF00\" ><a href=\"https://www.patreon.com/classicuo\">Become a Patreon!",
-                    0x32,
-                    true,
-                    isunicode: true,
-                    style: FontStyle.BlackBorder
-                )
-            );
-
-
+          
             Add
             (
                 new HtmlControl
@@ -448,7 +428,7 @@ namespace ClassicUO.Game.UI.Gumps.Login
                     false,
                     false,
                     false,
-                    "<body link=\"#ad9413\" vlink=\"#00FF00\" ><a href=\"https://www.classicuo.eu\">Website",
+                    "<body link=\"#FF00FF00\" vlink=\"#FF00FF00\" ><a href=\"https://www.classicuo.eu\">Website",
                     0x32,
                     true,
                     isunicode: true,
@@ -467,7 +447,7 @@ namespace ClassicUO.Game.UI.Gumps.Login
                     false,
                     false,
                     false,
-                    "<body link=\"#ad9413\" vlink=\"#00FF00\" ><a href=\"https://discord.gg/VdyCpjQ\">Join Discord",
+                    "<body link=\"#FF00FF00\" vlink=\"#FF00FF00\" ><a href=\"https://discord.gg/VdyCpjQ\">Join Discord",
                     0x32,
                     true,
                     isunicode: true,
@@ -622,10 +602,10 @@ namespace ClassicUO.Game.UI.Gumps.Login
 
         private class PasswordStbTextBox : StbTextBox
         {
-            private Point _caretScreenPosition;
-            private readonly RenderedText _rendererCaret;
+            private new Point _caretScreenPosition;
+            private new readonly RenderedText _rendererCaret;
 
-            private readonly RenderedText _rendererText;
+            private new readonly RenderedText _rendererText;
 
             public PasswordStbTextBox
             (
@@ -677,7 +657,7 @@ namespace ClassicUO.Game.UI.Gumps.Login
                 set => SetText(value);
             }
 
-            public ushort Hue
+            public new ushort Hue
             {
                 get => _rendererText.Hue;
                 set
@@ -752,7 +732,7 @@ namespace ClassicUO.Game.UI.Gumps.Login
                 UpdateCaretScreenPosition();
             }
 
-            private void UpdateCaretScreenPosition()
+            private new void UpdateCaretScreenPosition()
             {
                 _caretScreenPosition = _rendererText.GetCaretPosition(Stb.CursorIndex);
             }

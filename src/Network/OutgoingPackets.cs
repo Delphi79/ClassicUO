@@ -1544,9 +1544,9 @@ namespace ClassicUO.Network
             writer.Dispose();
         }
 
-        public static void Send_LogoutNotification(this NetClient socket, uint serial, uint gold, uint platinum)
+        public static void Send_LogoutNotification(this NetClient socket)
         {
-            const byte ID = 0x05;
+            const byte ID = 0xD1;
 
             int length = PacketsTable.GetPacketLength(ID);
 
@@ -1559,7 +1559,7 @@ namespace ClassicUO.Network
                 writer.WriteZero(2);
             }
 
-            writer.WriteUInt32BE(0xFFFF_FFFF);
+            writer.WriteUInt8(0x00);
 
             if (length < 0)
             {
@@ -2422,11 +2422,11 @@ namespace ClassicUO.Network
 
                     if (len > 0)
                     {
-                        byte[] buffer = ArrayPool<byte>.Shared.Rent(len);
+                        byte[] buffer = ArrayPool<byte>.Shared.Rent(len * 2);
 
                         try
                         {
-                            Encoding.UTF8.GetBytes
+                            int written = Encoding.UTF8.GetBytes
                             (
                                 text,
                                 startIndex,
@@ -2435,8 +2435,8 @@ namespace ClassicUO.Network
                                 0
                             );
 
-                            writer.WriteUInt8((byte) (len + 1));
-                            writer.Write(buffer.AsSpan(0, len));
+                            writer.WriteUInt8((byte) (written + 1));
+                            writer.Write(buffer.AsSpan(0, written));
                             writer.WriteUInt8(0x00);
                         }
                         finally
@@ -3347,26 +3347,29 @@ namespace ClassicUO.Network
             {
                 if (!string.IsNullOrEmpty(text[i]))
                 {
-                    byte[] buffer = ArrayPool<byte>.Shared.Rent(text[i].Length);
+                    string t = text[i].Replace("\n", "");
 
-                    try
+                    if (t.Length > 0)
                     {
-                        string t = text[i].Replace("\n", "");
+                        byte[] buffer = ArrayPool<byte>.Shared.Rent(t.Length * 2);//we have to assume we are using all two byte chars
 
-                        Encoding.UTF8.GetBytes
-                        (
-                            t,
-                            0,
-                            t.Length,
-                            buffer,
-                            0
-                        );
+                        try
+                        {
+                            int written = Encoding.UTF8.GetBytes
+                            (
+                                t,
+                                0,
+                                t.Length,
+                                buffer,
+                                0
+                            );
 
-                        writer.Write(buffer.AsSpan(0, t.Length));
-                    }
-                    finally
-                    {
-                        ArrayPool<byte>.Shared.Return(buffer);
+                            writer.Write(buffer.AsSpan(0, written));
+                        }
+                        finally
+                        {
+                            ArrayPool<byte>.Shared.Return(buffer);
+                        }
                     }
                 }
 
@@ -4464,6 +4467,37 @@ namespace ClassicUO.Network
             writer.Dispose();
         }
 
+        public static void Send_DeathScreen(this NetClient socket)
+        {
+            const byte ID = 0x2C;
+
+            int length = PacketsTable.GetPacketLength(ID);
+
+            StackDataWriter writer = new StackDataWriter(length < 0 ? 64 : length);
+
+            writer.WriteUInt8(ID);
+
+            if (length < 0)
+            {
+                writer.WriteZero(2);
+            }
+
+            writer.WriteUInt8(0x02); // Ghost
+
+            if (length < 0)
+            {
+                writer.Seek(1, SeekOrigin.Begin);
+                writer.WriteUInt16BE((ushort)writer.BytesWritten);
+            }
+            else
+            {
+                writer.WriteZero(length - writer.BytesWritten);
+            }
+
+            socket.Send(writer.AllocatedBuffer, writer.BytesWritten);
+            writer.Dispose();
+        }
+
 
         public static void Send_UOLive_HashResponse(this NetClient socket, uint block, byte mapIndex, Span<ushort> checksums)
         {
@@ -4481,7 +4515,7 @@ namespace ClassicUO.Network
             }
 
             writer.WriteUInt32BE(block);
-            writer.WriteZero(13);
+            writer.WriteZero(6);
             writer.WriteUInt8(0xFF);
             writer.WriteUInt8(mapIndex);
 

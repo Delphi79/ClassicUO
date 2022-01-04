@@ -75,6 +75,14 @@ namespace ClassicUO.Game
             Socket.Send_ChangeWarMode(war);
         }
 
+        public static void OpenMacroGump(string name)
+        {
+            MacroGump macroGump = UIManager.GetGump<MacroGump>();
+
+            macroGump?.Dispose();
+            UIManager.Add(new MacroGump(name));
+        }
+
         public static void OpenPaperdoll(uint serial)
         {
             PaperDollGump paperDollGump = UIManager.GetGump<PaperDollGump>(serial);
@@ -95,7 +103,7 @@ namespace ClassicUO.Game
             }
         }
 
-        public static void OpenSettings()
+        public static void OpenSettings(int page = 0)
         {
             OptionsGump opt = UIManager.GetGump<OptionsGump>();
 
@@ -108,6 +116,7 @@ namespace ClassicUO.Game
                 };
 
                 UIManager.Add(optionsGump);
+                optionsGump.ChangePage(page);
                 optionsGump.SetInScreen();
             }
             else
@@ -419,6 +428,11 @@ namespace ClassicUO.Game
             UIManager.GetGump<PartyInviteGump>()?.Dispose();
         }
 
+        public static void RequestPartyRemoveMemberByTarget()
+        {
+            Socket.Send_PartyRemoveRequest(0x00);
+        }
+
         public static void RequestPartyRemoveMember(uint serial)
         {
             Socket.Send_PartyRemoveRequest(serial);
@@ -494,7 +508,6 @@ namespace ClassicUO.Game
             ItemHold.Set(item, (ushort) amount, offset);
             ItemHold.IsGumpTexture = is_gump;
             Socket.Send_PickUpRequest(item, (ushort) amount);
-            UIManager.GameCursor.SetDraggedItem(offset);
 
             if (item.OnGround)
             {

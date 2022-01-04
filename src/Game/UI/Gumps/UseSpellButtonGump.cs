@@ -31,28 +31,38 @@
 #endregion
 
 using System;
-using System.IO;
 using System.Xml;
 using ClassicUO.Configuration;
 using ClassicUO.Game.Data;
+using ClassicUO.Game.Managers;
+using ClassicUO.Game.Scenes;
 using ClassicUO.Game.UI.Controls;
 using ClassicUO.Input;
 using ClassicUO.IO.Resources;
-using ClassicUO.Utility;
+using ClassicUO.Renderer;
 using Microsoft.Xna.Framework;
 
 namespace ClassicUO.Game.UI.Gumps
 {
     internal class UseSpellButtonGump : AnchorableGump
     {
+        const ushort LOCK_GRAPHIC = 0x1086;
+
         private GumpPic _background;
         private SpellDefinition _spell;
+
+        private readonly MacroManager _mm;
+
+
+        public bool ShowEdit => Keyboard.Ctrl && Keyboard.Alt && ProfileManager.CurrentProfile.FastSpellsAssign;
 
         public UseSpellButtonGump() : base(0, 0)
         {
             CanMove = true;
             AcceptMouseInput = true;
             CanCloseWithRightClick = true;
+
+            _mm = Client.Game.GetScene<GameScene>().Macros;
         }
 
         public UseSpellButtonGump(SpellDefinition spell) : this()
@@ -86,6 +96,46 @@ namespace ClassicUO.Game.UI.Gumps
             GroupMatrixWidth = 44;
             GroupMatrixHeight = 44;
             AnchorType = ANCHOR_TYPE.SPELL;
+        }
+
+        public override bool Draw(UltimaBatcher2D batcher, int x, int y)
+        {
+            base.Draw(batcher, x, y);
+
+            if (ShowEdit)
+            {
+                Vector3 hueVector = ShaderHueTranslator.GetHueVector(0);
+
+                var texture = GumpsLoader.Instance.GetGumpTexture(LOCK_GRAPHIC, out var bounds);
+
+                if (texture != null)
+                {
+                    if (UIManager.MouseOverControl != null && (UIManager.MouseOverControl == this || UIManager.MouseOverControl.RootParent == this))
+                    {
+                        hueVector.X = 34;
+                        hueVector.Y = 1;
+                    }
+
+                    batcher.Draw
+                    (
+                        texture, 
+                        new Vector2(x + (Width - bounds.Width), y),
+                        bounds,
+                        hueVector
+                    );
+                }
+            }
+
+            return true;
+        }
+
+        private int GetSpellsId()
+        {
+            var rawSpellId = _spell.ID % 100;
+            // Mysticism Spells Id start from 678
+            if (rawSpellId > 78)
+                return rawSpellId - 78;
+            return rawSpellId;
         }
 
         private static int GetSpellTooltip(int id)
@@ -146,6 +196,16 @@ namespace ClassicUO.Game.UI.Gumps
             base.OnMouseUp(x, y, button);
 
             Point offset = Mouse.LDragOffset;
+
+            if (button == MouseButtonType.Left && ShowEdit)
+            {
+                Macro mCast = Macro.CreateFastMacro(_spell.Name, MacroType.CastSpell, (MacroSubType)GetSpellsId() + SpellBookDefinition.GetSpellsGroup(_spell.ID));
+                if (_mm.FindMacro(_spell.Name) == null)
+                {
+                    _mm.MoveToBack(mCast);
+                }
+                GameActions.OpenMacroGump(_spell.Name);
+            }
 
             if (ProfileManager.CurrentProfile.CastSpellsByOneClick && button == MouseButtonType.Left && Math.Abs(offset.X) < 5 && Math.Abs(offset.Y) < 5)
             {

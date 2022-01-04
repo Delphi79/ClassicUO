@@ -67,7 +67,6 @@ namespace ClassicUO.Game.UI.Gumps
 
         //experimental
         private Checkbox _autoOpenDoors, _autoOpenCorpse, _skipEmptyCorpse, _disableTabBtn, _disableCtrlQWBtn, _disableDefaultHotkeys, _disableArrowBtn, _disableAutoMove, _overrideContainerLocation, _smoothDoors, _showTargetRangeIndicator, _customBars, _customBarsBBG, _saveHealthbars;
-        private Checkbox _buffBarTime, _castSpellsByOneClick, _queryBeforAttackCheckbox, _queryBeforeBeneficialCheckbox, _spellColoringCheckbox, _spellFormatCheckbox;
         private HSliderBar _cellSize;
         private Checkbox _containerScaleItems, _containerDoubleClickToLoot, _relativeDragAnDropItems, _useLargeContianersGumps, _highlightContainersWhenMouseIsOver;
 
@@ -108,7 +107,9 @@ namespace ClassicUO.Game.UI.Gumps
                          _alwaysRun,
                          _alwaysRunUnlessHidden,
                          _showHpMobile,
-                         _highlightByState,
+                         _highlightByPoisoned,
+                         _highlightByParalyzed,
+                         _highlightByInvul,
                          _drawRoofs,
                          _treeToStumps,
                          _hideVegetation,
@@ -132,6 +133,7 @@ namespace ClassicUO.Game.UI.Gumps
         // combat & spells
         private ClickableColorBox _innocentColorPickerBox, _friendColorPickerBox, _crimialColorPickerBox, _canAttackColorPickerBox, _enemyColorPickerBox, _murdererColorPickerBox, _neutralColorPickerBox, _beneficColorPickerBox, _harmfulColorPickerBox;
         private HSliderBar _lightBar;
+        private Checkbox _buffBarTime, _castSpellsByOneClick, _queryBeforAttackCheckbox, _queryBeforeBeneficialCheckbox, _spellColoringCheckbox, _spellFormatCheckbox, _enableFastSpellsAssign;
 
         // macro
         private MacroControl _macroControl;
@@ -159,6 +161,8 @@ namespace ClassicUO.Game.UI.Gumps
         private InputField _spellFormatBox;
         private ClickableColorBox _tooltip_font_hue;
         private FontSelector _tooltip_font_selector;
+        private HSliderBar _dragSelectStartX, _dragSelectStartY;
+        private Checkbox _dragSelectAsAnchor;
 
         // video
         private Checkbox _use_old_status_gump, _windowBorderless, _enableDeathScreen, _enableBlackWhiteEffect, _altLights, _enableLight, _enableShadows, _enableShadowsStatics, _auraMouse, _runMouseInSeparateThread, _useColoredLights, _darkNights, _partyAura, _hideChatGradient;
@@ -177,7 +181,7 @@ namespace ClassicUO.Game.UI.Gumps
         {
             Add
             (
-                new AlphaBlendControl(0.05f)
+                new AlphaBlendControl(0.95f)
                 {
                     X = 1,
                     Y = 1,
@@ -346,6 +350,21 @@ namespace ClassicUO.Game.UI.Gumps
                 ) { ButtonParameter = 12 }
             );
 
+            Add
+            (
+                new NiceButton
+                (
+                    10,
+                    10 + 30 * i++,
+                    140,
+                    25,
+                    ButtonAction.Activate,
+                    ResGumps.IgnoreListManager
+                )
+                {
+                    ButtonParameter = (int)Buttons.OpenIgnoreList
+                }
+            );
 
             Add
             (
@@ -730,11 +749,11 @@ namespace ClassicUO.Game.UI.Gumps
 
             section2.Add
             (
-                _highlightByState = AddCheckBox
+                _highlightByPoisoned = AddCheckBox
                 (
                     null,
-                    ResGumps.HighlighState,
-                    _currentProfile.HighlightMobilesByFlags,
+                    ResGumps.HighlightPoisoned,
+                    _currentProfile.HighlightMobilesByPoisoned,
                     startX,
                     startY
                 )
@@ -755,6 +774,21 @@ namespace ClassicUO.Game.UI.Gumps
             );
 
             section2.AddRight(AddLabel(null, ResGumps.PoisonedColor, 0, 0), 2);
+            section2.PopIndent();
+
+            section2.Add
+            (
+                _highlightByParalyzed = AddCheckBox
+                (
+                    null,
+                    ResGumps.HighlightParalyzed,
+                    _currentProfile.HighlightMobilesByParalize,
+                    startX,
+                    startY
+                )
+            );
+
+            section2.PushIndent();
 
             section2.Add
             (
@@ -769,6 +803,22 @@ namespace ClassicUO.Game.UI.Gumps
             );
 
             section2.AddRight(AddLabel(null, ResGumps.ParalyzedColor, 0, 0), 2);
+
+            section2.PopIndent();
+
+            section2.Add
+            (
+                _highlightByInvul = AddCheckBox
+                (
+                    null,
+                    ResGumps.HighlightInvulnerable,
+                    _currentProfile.HighlightMobilesByInvul,
+                    startX,
+                    startY
+                )
+            );
+
+            section2.PushIndent();
 
             section2.Add
             (
@@ -1188,6 +1238,20 @@ namespace ClassicUO.Game.UI.Gumps
                     ResGumps.DragHumanoidsOnly,
                     _currentProfile.DragSelectHumanoidsOnly,
                     startX,
+                    startY
+                )
+            );
+
+            section4.Add(new Label(ResGumps.DragSelectStartingPosX, true, HUE_FONT));
+            section4.Add(_dragSelectStartX = new HSliderBar(startX, startY, 200, 0, _currentProfile.GameWindowSize.X, _currentProfile.DragSelectStartX, HSliderBarStyle.MetalWidgetRecessedBar, true, 0, HUE_FONT));
+
+            section4.Add(new Label(ResGumps.DragSelectStartingPosY, true, HUE_FONT));
+            section4.Add(_dragSelectStartY = new HSliderBar(startX, startY, 200, 0, _currentProfile.GameWindowSize.Y, _currentProfile.DragSelectStartY, HSliderBarStyle.MetalWidgetRecessedBar, true, 0, HUE_FONT));
+            section4.Add
+            (
+                _dragSelectAsAnchor = AddCheckBox
+                (
+                    null, ResGumps.DragSelectAnchoredHB, _currentProfile.DragSelectAsAnchor, startX,
                     startY
                 )
             );
@@ -2641,7 +2705,16 @@ namespace ClassicUO.Game.UI.Gumps
 
             startY += _buffBarTime.Height + 2;
 
-            startY += 40;
+            _enableFastSpellsAssign = AddCheckBox
+            (
+                rightArea,
+                ResGumps.EnableFastSpellsAssign,
+                _currentProfile.FastSpellsAssign,
+                startX,
+                startY
+            );
+
+            startY += 30;
 
             int initialY = startY;
 
@@ -3351,6 +3424,12 @@ namespace ClassicUO.Game.UI.Gumps
                 case Buttons.NewMacro: break;
 
                 case Buttons.DeleteMacro: break;
+                case Buttons.OpenIgnoreList:
+                    // If other IgnoreManagerGump exist - Dispose it
+                    UIManager.GetGump<IgnoreManagerGump>()?.Dispose();
+                    // Open new
+                    UIManager.Add(new IgnoreManagerGump());
+                    break;
             }
         }
 
@@ -3376,7 +3455,9 @@ namespace ClassicUO.Game.UI.Gumps
                     _showHpMobile.IsChecked = false;
                     _hpComboBox.SelectedIndex = 0;
                     _hpComboBoxShowWhen.SelectedIndex = 0;
-                    _highlightByState.IsChecked = true;
+                    _highlightByPoisoned.IsChecked = true;
+                    _highlightByParalyzed.IsChecked = true;
+                    _highlightByInvul.IsChecked = true;
                     _poisonColorPickerBox.Hue = 0x0044;
                     _paralyzedColorPickerBox.Hue = 0x014C;
                     _invulnerableColorPickerBox.Hue = 0x0030;
@@ -3418,6 +3499,10 @@ namespace ClassicUO.Game.UI.Gumps
                     _showSkillsMessage.IsChecked = true;
                     _showSkillsMessageDelta.Value = 1;
                     _showStatsMessage.IsChecked = true;
+
+                    _dragSelectStartX.Value = 100;
+                    _dragSelectStartY.Value = 100;
+                    _dragSelectAsAnchor.IsChecked = false;
 
                     break;
 
@@ -3517,6 +3602,7 @@ namespace ClassicUO.Game.UI.Gumps
                     _queryBeforeBeneficialCheckbox.IsChecked = false;
                     _castSpellsByOneClick.IsChecked = false;
                     _buffBarTime.IsChecked = false;
+                    _enableFastSpellsAssign.IsChecked = false;
                     _beneficColorPickerBox.Hue = 0x0059;
                     _harmfulColorPickerBox.Hue = 0x0020;
                     _neutralColorPickerBox.Hue = 0x03b2;
@@ -3586,7 +3672,9 @@ namespace ClassicUO.Game.UI.Gumps
             _currentProfile.AlwaysRun = _alwaysRun.IsChecked;
             _currentProfile.AlwaysRunUnlessHidden = _alwaysRunUnlessHidden.IsChecked;
             _currentProfile.ShowMobilesHP = _showHpMobile.IsChecked;
-            _currentProfile.HighlightMobilesByFlags = _highlightByState.IsChecked;
+            _currentProfile.HighlightMobilesByPoisoned = _highlightByPoisoned.IsChecked;
+            _currentProfile.HighlightMobilesByParalize = _highlightByParalyzed.IsChecked;
+            _currentProfile.HighlightMobilesByInvul = _highlightByInvul.IsChecked;
             _currentProfile.PoisonHue = _poisonColorPickerBox.Hue;
             _currentProfile.ParalyzedHue = _paralyzedColorPickerBox.Hue;
             _currentProfile.InvulnerableHue = _invulnerableColorPickerBox.Hue;
@@ -3892,6 +3980,7 @@ namespace ClassicUO.Game.UI.Gumps
             _currentProfile.EnabledBeneficialCriminalActionQuery = _queryBeforeBeneficialCheckbox.IsChecked;
             _currentProfile.CastSpellsByOneClick = _castSpellsByOneClick.IsChecked;
             _currentProfile.BuffBarTime = _buffBarTime.IsChecked;
+            _currentProfile.FastSpellsAssign = _enableFastSpellsAssign.IsChecked;
 
             _currentProfile.BeneficHue = _beneficColorPickerBox.Hue;
             _currentProfile.HarmfulHue = _harmfulColorPickerBox.Hue;
@@ -3997,6 +4086,9 @@ namespace ClassicUO.Game.UI.Gumps
             _currentProfile.EnableDragSelect = _enableDragSelect.IsChecked;
             _currentProfile.DragSelectModifierKey = _dragSelectModifierKey.SelectedIndex;
             _currentProfile.DragSelectHumanoidsOnly = _dragSelectHumanoidsOnly.IsChecked;
+            _currentProfile.DragSelectStartX = _dragSelectStartX.Value;
+            _currentProfile.DragSelectStartY = _dragSelectStartY.Value;
+            _currentProfile.DragSelectAsAnchor = _dragSelectAsAnchor.IsChecked;
 
             _currentProfile.ShowSkillsChangedMessage = _showSkillsMessage.IsChecked;
             _currentProfile.ShowSkillsChangedDeltaValue = _showSkillsMessageDelta.Value;
@@ -4133,16 +4225,19 @@ namespace ClassicUO.Game.UI.Gumps
 
         public override bool Draw(UltimaBatcher2D batcher, int x, int y)
         {
-            ResetHueVector();
+            Vector3 hueVector = ShaderHueTranslator.GetHueVector(0);
 
-            batcher.Draw2D
+            batcher.Draw
             (
                 LogoTexture,
-                x + 190,
-                y + 20,
-                WIDTH - 250,
-                400,
-                ref HueVector
+                new Rectangle
+                (
+                    x + 190,
+                    y + 20,
+                    WIDTH - 250,
+                    400
+                ),
+                hueVector
             );
 
             batcher.DrawRectangle
@@ -4152,7 +4247,7 @@ namespace ClassicUO.Game.UI.Gumps
                 y,
                 Width,
                 Height,
-                ref HueVector
+                hueVector
             );
 
             return base.Draw(batcher, x, y);
@@ -4346,6 +4441,7 @@ namespace ClassicUO.Game.UI.Gumps
             EnemyColor,
             MurdererColor,
 
+            OpenIgnoreList,
             NewMacro,
             DeleteMacro,
 

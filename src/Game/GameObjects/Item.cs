@@ -91,12 +91,10 @@ namespace ClassicUO.Game.GameObjects
                 i.TextContainer?.Clear();
                 i.IsFlipped = false;
                 i.FrameInfo = Rectangle.Empty;
-                i.UseObjectHandles = false;
-                i.ClosedObjectHandles = false;
-                i.ObjectHandlesOpened = false;
+                i.ObjectHandlesStatus = ObjectHandlesStatus.NONE;
                 i.AlphaHue = 0;
                 i.AllowedToDraw = true;
-
+                i.ExecuteAnimation = true;
                 i.HitsRequest = HitsRequestStatus.None;
             }
         );
@@ -466,13 +464,13 @@ namespace ClassicUO.Game.GameObjects
             BoatMovingManager.ClearSteps(Serial);
         }
 
-        public override void CheckGraphicChange(sbyte animIndex = 0)
+        public override void CheckGraphicChange(byte animIndex = 0)
         {
             if (!IsMulti)
             {
                 if (!IsCorpse)
                 {
-                    AllowedToDraw = !GameObjectHelper.IsNoDrawable(Graphic);
+                    AllowedToDraw = CanBeDrawn(Graphic);
                 }
                 else
                 {
@@ -1005,12 +1003,8 @@ namespace ClassicUO.Game.GameObjects
             {
                 Point p = RealScreenPosition;
 
-                ArtTexture texture = ArtLoader.Instance.GetTexture(Graphic);
-
-                if (texture != null)
-                {
-                    p.Y -= texture.ImageRectangle.Height >> 1;
-                }
+                var bounds = ArtLoader.Instance.GetRealArtBounds(Graphic);
+                p.Y -= bounds.Height >> 1;
 
                 p.X += (int) Offset.X + 22;
                 p.Y += (int) (Offset.Y - Offset.Z) + 22;
@@ -1067,7 +1061,7 @@ namespace ClassicUO.Game.GameObjects
 
                 if (LastAnimationChangeTime < Time.Ticks)
                 {
-                    sbyte frameIndex = (sbyte) (AnimIndex + 1);
+                    byte frameIndex = (byte) (AnimIndex + (ExecuteAnimation ? 1 : 0));
                     ushort id = GetGraphicForAnimation();
 
                     //FileManager.Animations.GetCorpseAnimationGroup(ref graphic, ref animGroup, ref newHue);
@@ -1088,22 +1082,21 @@ namespace ClassicUO.Game.GameObjects
 
                         AnimationDirection direction = AnimationsLoader.Instance.GetCorpseAnimationGroup(ref id, ref animGroup, ref hue).Direction[dir];
 
-                        if (direction.FrameCount == 0 || direction.Frames == null)
+                        if (direction.FrameCount == 0 || direction.SpriteInfos == null)
                         {
                             AnimationsLoader.Instance.LoadAnimationFrames(id, animGroup, dir, ref direction);
                         }
 
                         if (direction.Address != 0 && direction.Size != 0 || direction.IsUOP)
                         {
-                            direction.LastAccessTime = Time.Ticks;
                             int fc = direction.FrameCount;
 
                             if (frameIndex >= fc)
                             {
-                                frameIndex = (sbyte) (fc - 1);
+                                frameIndex = (byte) (fc - 1);
                             }
 
-                            AnimIndex = frameIndex;
+                            AnimIndex = (byte) (frameIndex % direction.FrameCount);
                         }
                     }
 

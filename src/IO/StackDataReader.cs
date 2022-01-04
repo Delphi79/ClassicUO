@@ -276,12 +276,12 @@ namespace ClassicUO.IO
 
         public string ReadASCII(bool safe = false)
         {
-            return ReadString(Encoding.ASCII, -1, 1, safe);
+            return ReadString(StringHelper.Cp1252Encoding, -1, 1, safe);
         }
 
         public string ReadASCII(int length, bool safe = false)
         {
-            return ReadString(Encoding.ASCII, length, 1, safe);
+            return ReadString(StringHelper.Cp1252Encoding, length, 1, safe);
         }
 
         public string ReadUnicodeBE(bool safe = false)
@@ -322,7 +322,7 @@ namespace ClassicUO.IO
         // from modernuo <3
         private string ReadString(Encoding encoding, int length, int sizeT, bool safe)
         {
-            if (Position + sizeT > Length)
+            if (length == 0 || Position + sizeT > Length)
             {
                 return string.Empty;
             }
@@ -350,7 +350,12 @@ namespace ClassicUO.IO
             int index = GetIndexOfZero(slice, sizeT);
             size = index < 0 ? size : index;
 
-            string result = encoding.GetString((byte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(slice)), size);
+            string result;
+
+            fixed (byte* ptr = slice)
+            {
+                result = encoding.GetString(ptr, size);
+            }
 
             if (safe)
             {

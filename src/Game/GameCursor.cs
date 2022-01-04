@@ -65,16 +65,13 @@ namespace ClassicUO.Game
                 0x2077, 0x2078, 0x2079
             }
         };
-        private static Vector3 _vec = Vector3.Zero;
 
         private readonly Aura _aura = new Aura(30);
         private readonly CustomBuildObject[] _componentsList = new CustomBuildObject[10];
         private readonly int[,] _cursorOffset = new int[2, 16];
         private readonly IntPtr[,] _cursors_ptr = new IntPtr[3, 16];
-        private UOTexture _draggedItemTexture;
         private ushort _graphic = 0x2073;
         private bool _needGraphicUpdate = true;
-        private Point _offset;
         private readonly List<Multi> _temp = new List<Multi>();
         private readonly Tooltip _tooltip;
 
@@ -88,142 +85,15 @@ namespace ClassicUO.Game
                 {
                     ushort id = _cursorData[i, j];
 
-                    IntPtr surface = ArtLoader.Instance.CreateCursorSurfacePtr(id, (ushort) (i == 2 ? 0x0033 : 0), out short w, out short h);
-                 
-                    if (i == 0)
-                    {
-                        if (surface != IntPtr.Zero)
-                        {
-                            float offX = 0;
-                            float offY = 0;
-                            float dw = w;
-                            float dh = h;
-
-                            if (id == 0x206A)
-                            {
-                                offX = -4f;
-                            }
-                            else if (id == 0x206B)
-                            {
-                                offX = -dw + 3f;
-                            }
-                            else if (id == 0x206C)
-                            {
-                                offX = -dw + 3f;
-                                offY = -(dh / 2f);
-                            }
-                            else if (id == 0x206D)
-                            {
-                                offX = -dw;
-                                offY = -dh;
-                            }
-                            else if (id == 0x206E)
-                            {
-                                offX = -(dw * 0.66f);
-                                offY = -dh;
-                            }
-                            else if (id == 0x206F)
-                            {
-                                offY = -dh + 4f;
-                            }
-                            else if (id == 0x2070)
-                            {
-                                offY = -dh + 4f;
-                            }
-                            else if (id == 0x2075)
-                            {
-                                offY = -4f;
-                            }
-                            else if (id == 0x2076)
-                            {
-                                offX = -12f;
-                                offY = -14f;
-                            }
-                            else if (id == 0x2077)
-                            {
-                                offX = -(dw / 2f);
-                                offY = -(dh / 2f);
-                            }
-                            else if (id == 0x2078)
-                            {
-                                offY = -(dh * 0.66f);
-                            }
-                            else if (id == 0x2079)
-                            {
-                                offY = -(dh / 2f);
-                            }
-
-                            switch (id)
-                            {
-                                case 0x206B:
-                                    offX = -29;
-                                    offY = -1;
-
-                                    break;
-
-                                case 0x206C:
-                                    offX = -41;
-                                    offY = -9;
-
-                                    break;
-
-                                case 0x206D:
-                                    offX = -36;
-                                    offY = -25;
-
-                                    break;
-
-                                case 0x206E:
-                                    offX = -14;
-                                    offY = -33;
-
-                                    break;
-
-                                case 0x206F:
-                                    offX = -2;
-                                    offY = -26;
-
-                                    break;
-
-                                case 0x2070:
-                                    offX = -3;
-                                    offY = -8;
-
-                                    break;
-
-                                case 0x2071:
-                                    offX = -1;
-                                    offY = -1;
-
-                                    break;
-
-                                case 0x206A:
-                                    offX = -4;
-                                    offY = -2;
-
-                                    break;
-
-                                case 0x2075:
-                                    offX = -2;
-                                    offY = -10;
-
-                                    break;
-                            }
-
-                            _cursorOffset[0, j] = (int)offX;
-                            _cursorOffset[1, j] = (int)offY;
-                        }
-                        else
-                        {
-                            _cursorOffset[0, j] = 0;
-                            _cursorOffset[1, j] = 0;
-                        }
-                    }
+                    IntPtr surface = ArtLoader.Instance.CreateCursorSurfacePtr(id, (ushort)(i == 2 ? 0x0033 : 0), out int hotX, out int hotY);
 
                     if (surface != IntPtr.Zero)
                     {
-                        int hotX = -_cursorOffset[0, j];
-                        int hotY = -_cursorOffset[1, j];
+                        if (hotX != 0 || hotY != 0)
+                        {
+                            _cursorOffset[0, j] = hotX;
+                            _cursorOffset[1, j] = hotY;
+                        }
 
                         _cursors_ptr[i, j] = SDL.SDL_CreateColorCursor(surface, hotX, hotY);
                     }
@@ -248,31 +118,43 @@ namespace ClassicUO.Game
         public bool IsDraggingCursorForced { get; set; }
         public bool AllowDrawSDLCursor { get; set; } = true;
 
-
-        public void SetDraggedItem(Point? offset)
+        private ushort GetDraggingItemGraphic()
         {
-            _draggedItemTexture = ItemHold.IsGumpTexture ? GumpsLoader.Instance.GetTexture((ushort) (ItemHold.DisplayedGraphic - Constants.ITEM_GUMP_TEXTURE_OFFSET)) : ArtLoader.Instance.GetTexture(ItemHold.DisplayedGraphic);
-
-            if (_draggedItemTexture == null)
+            if (ItemHold.Enabled)
             {
-                return;
+                if (ItemHold.IsGumpTexture)
+                {
+                    return (ushort)(ItemHold.DisplayedGraphic - Constants.ITEM_GUMP_TEXTURE_OFFSET);
+                }
+
+                return ItemHold.DisplayedGraphic;
             }
 
-            float scale = 1;
-
-            if (ProfileManager.CurrentProfile != null && ProfileManager.CurrentProfile.ScaleItemsInsideContainers)
-            {
-                scale = UIManager.ContainerScale;
-            }
-
-            _offset.X = (int) ((_draggedItemTexture.Width >> 1) * scale);
-            _offset.Y = (int) ((_draggedItemTexture.Height >> 1) * scale);
-
-            if (offset.HasValue)
-            {
-                _offset -= offset.Value;
-            }
+            return 0xFFFF;
         }
+
+        private Point GetDraggingItemOffset()
+        {
+            ushort graphic = GetDraggingItemGraphic();
+
+            if (graphic != 0xFFFF)
+            {
+                _ = ArtLoader.Instance.GetStaticTexture(graphic, out var bounds);
+
+                float scale = 1;
+
+                if (ProfileManager.CurrentProfile != null && ProfileManager.CurrentProfile.ScaleItemsInsideContainers)
+                {
+                    scale = UIManager.ContainerScale;
+                }
+
+                return  new Point((int)((bounds.Width >> 1) * scale) - ItemHold.MouseOffset.X, (int)((bounds.Height >> 1) * scale) - ItemHold.MouseOffset.Y);
+            }
+
+            return Point.Zero;
+        }
+
+
 
         public void Update(double totalTime, double frameTime)
         {
@@ -308,14 +190,18 @@ namespace ClassicUO.Game
 
             if (ItemHold.Enabled)
             {
-                _draggedItemTexture.Ticks = (long) totalTime;
+                ushort draggingGraphic = GetDraggingItemGraphic();
 
-                if (ItemHold.IsFixedPosition && !UIManager.IsDragging)
+                if (draggingGraphic != 0xFFFF && ItemHold.IsFixedPosition && !UIManager.IsDragging)
                 {
-                    int x = ItemHold.FixedX - _offset.X;
-                    int y = ItemHold.FixedY - _offset.Y;
+                    _ = ArtLoader.Instance.GetStaticTexture(draggingGraphic, out var bounds);
 
-                    if (Mouse.Position.X >= x && Mouse.Position.X < x + _draggedItemTexture.Width && Mouse.Position.Y >= y && Mouse.Position.Y < y + _draggedItemTexture.Height)
+                    Point offset = GetDraggingItemOffset();
+
+                    int x = ItemHold.FixedX - offset.X;
+                    int y = ItemHold.FixedY - offset.Y;
+
+                    if (Mouse.Position.X >= x && Mouse.Position.X < x + bounds.Width && Mouse.Position.Y >= y && Mouse.Position.Y < y + bounds.Height)
                     {
                         if (!ItemHold.IgnoreFixedPosition)
                         {
@@ -458,7 +344,7 @@ namespace ClassicUO.Game
                             break;
                     }
 
-                    _aura.Draw(sb, Mouse.Position.X, Mouse.Position.Y, hue);
+                    _aura.Draw(sb, Mouse.Position.X, Mouse.Position.Y, hue, 0f);
                 }
 
                 if (ProfileManager.CurrentProfile.ShowTargetRangeIndicator)
@@ -469,11 +355,11 @@ namespace ClassicUO.Game
                         {
                             string dist = obj.Distance.ToString();
 
-                            Vector3 hue = new Vector3(0, 1, 0);
-                            sb.DrawString(Fonts.Bold, dist, Mouse.Position.X - 26, Mouse.Position.Y - 21, ref hue);
+                            Vector3 hue = new Vector3(0, 1, 1f);
+                            sb.DrawString(Fonts.Bold, dist, Mouse.Position.X - 26, Mouse.Position.Y - 21, hue);
                             
                             hue.Y = 0;
-                            sb.DrawString(Fonts.Bold, dist, Mouse.Position.X - 25, Mouse.Position.Y - 20, ref hue);
+                            sb.DrawString(Fonts.Bold, dist, Mouse.Position.X - 25, Mouse.Position.Y - 20, hue);
                         }
                     }
                 }
@@ -493,37 +379,48 @@ namespace ClassicUO.Game
                     scale = UIManager.ContainerScale;
                 }
 
-                int x = (ItemHold.IsFixedPosition ? ItemHold.FixedX : Mouse.Position.X) - _offset.X;
-                int y = (ItemHold.IsFixedPosition ? ItemHold.FixedY : Mouse.Position.Y) - _offset.Y;
+                ushort draggingGraphic = GetDraggingItemGraphic();
 
-                Vector3 hue = Vector3.Zero;
+                var texture = ArtLoader.Instance.GetStaticTexture(draggingGraphic, out var bounds);
 
-                ShaderHueTranslator.GetHueVector(ref hue, ItemHold.Hue, ItemHold.IsPartialHue, ItemHold.HasAlpha ? .5f : 0);
-
-                sb.Draw2D
-                (
-                    _draggedItemTexture,
-                    x,
-                    y,
-                    _draggedItemTexture.Width * scale,
-                    _draggedItemTexture.Height * scale,
-                    ref hue
-                );
-
-                if (ItemHold.Amount > 1 && ItemHold.DisplayedGraphic == ItemHold.Graphic && ItemHold.IsStackable)
+                if (texture != null)
                 {
-                    x += 5;
-                    y += 5;
+                    Point offset = GetDraggingItemOffset();
 
-                    sb.Draw2D
+                    int x = (ItemHold.IsFixedPosition ? ItemHold.FixedX : Mouse.Position.X) - offset.X;
+                    int y = (ItemHold.IsFixedPosition ? ItemHold.FixedY : Mouse.Position.Y) - offset.Y;
+
+                    Vector3 hue = ShaderHueTranslator.GetHueVector(ItemHold.Hue, ItemHold.IsPartialHue, ItemHold.HasAlpha ? .5f : 1f);
+
+                    var rect = new Rectangle
                     (
-                        _draggedItemTexture,
                         x,
                         y,
-                        _draggedItemTexture.Width * scale,
-                        _draggedItemTexture.Height * scale,
-                        ref hue
+                        (int)(bounds.Width * scale),
+                        (int)(bounds.Height * scale)
                     );
+
+                    sb.Draw
+                    (
+                        texture,
+                        rect,
+                        bounds,
+                        hue
+                    );
+
+                    if (ItemHold.Amount > 1 && ItemHold.DisplayedGraphic == ItemHold.Graphic && ItemHold.IsStackable)
+                    {
+                        rect.X += 5;
+                        rect.Y += 5;
+
+                        sb.Draw
+                        (
+                            texture,
+                            rect,
+                            bounds,
+                            hue
+                        );
+                    }
                 }
             }
 
@@ -531,6 +428,8 @@ namespace ClassicUO.Game
 
             if (!Settings.GlobalSettings.RunMouseInASeparateThread)
             {
+                Graphic = AssignGraphicByState();
+
                 ushort graphic = Graphic;
 
                 if (graphic < 0x206A)
@@ -545,18 +444,30 @@ namespace ClassicUO.Game
                 int offX = _cursorOffset[0, graphic];
                 int offY = _cursorOffset[1, graphic];
 
+                Vector3 hueVec;
+
                 if (World.InGame && World.MapIndex != 0 && !World.Player.InWarMode)
                 {
-                    _vec.X = 0x0034;
-                    _vec.Y = 1;
-                    _vec.Z = 0;
+                    hueVec = ShaderHueTranslator.GetHueVector(0x0033);
                 }
                 else
                 {
-                    _vec = Vector3.Zero;
+                    hueVec = ShaderHueTranslator.GetHueVector(0);
                 }
 
-                sb.Draw2D(ArtLoader.Instance.GetTexture(Graphic), Mouse.Position.X + offX, Mouse.Position.Y + offY, ref _vec);
+                var texture = ArtLoader.Instance.GetStaticTexture(Graphic, out var bounds);
+
+                sb.Draw
+                (
+                    texture,
+                    new Vector2
+                    (
+                        Mouse.Position.X - offX,
+                        Mouse.Position.Y - offY
+                    ), 
+                    bounds,
+                    hueVec
+                );
             }
         }
 
@@ -564,7 +475,15 @@ namespace ClassicUO.Game
         {
             if (Client.Game.Scene is GameScene gs)
             {
-                if (!World.ClientFeatures.TooltipsEnabled || SelectedObject.Object is Item selectedItem && selectedItem.IsLocked && selectedItem.ItemData.Weight == 255 && !selectedItem.ItemData.IsContainer || ItemHold.Enabled && !ItemHold.IsFixedPosition)
+                if (!World.ClientFeatures.TooltipsEnabled ||
+                    (SelectedObject.Object is Item selectedItem && 
+                    selectedItem.IsLocked && 
+                    selectedItem.ItemData.Weight == 255 && 
+                    !selectedItem.ItemData.IsContainer &&
+                    // We need to check if OPL contains data.
+                    // If not we can ignore tooltip.
+                    !World.OPL.Contains(selectedItem)) || 
+                    (ItemHold.Enabled && !ItemHold.IsFixedPosition))
                 {
                     if (!_tooltip.IsEmpty && (UIManager.MouseOverControl == null || UIManager.IsMouseOverWorld))
                     {

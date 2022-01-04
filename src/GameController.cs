@@ -68,6 +68,8 @@ namespace ClassicUO
         private double _totalElapsed, _currentFpsTime;
         private uint _totalFrames;
         private UltimaBatcher2D _uoSpriteBatch;
+        private bool _suppressedDraw;
+        private UOFontRenderer _fontRenderer;
 
         public GameController()
         {
@@ -110,12 +112,11 @@ namespace ClassicUO
 
             base.Initialize();
         }
+        
 
         protected override void LoadContent()
         {
             base.LoadContent();
-
-            Client.Load();
 
             const int TEXTURE_WIDTH = 32;
             const int TEXTURE_HEIGHT = 2048;
@@ -159,6 +160,12 @@ namespace ClassicUO
             GraphicsDevice.Textures[1] = _hueSamplers[0];
             GraphicsDevice.Textures[2] = _hueSamplers[1];
             GraphicsDevice.Textures[3] = _hueSamplers[2];
+
+            GumpsLoader.Instance.CreateAtlas(GraphicsDevice);
+            LightsLoader.Instance.CreateAtlas(GraphicsDevice);
+            AnimationsLoader.Instance.CreateAtlas(GraphicsDevice);
+
+            _fontRenderer = new UOFontRenderer(GraphicsDevice);
 
             UIManager.InitializeGameCursor();
             AnimatedStaticsManager.Initialize();
@@ -428,6 +435,7 @@ namespace ClassicUO
             }
 
             double x = _intervalFixedUpdate[!IsActive && ProfileManager.CurrentProfile != null && ProfileManager.CurrentProfile.ReduceFPSWhenInactive ? 1 : 0];
+            _suppressedDraw = false;
 
             if (_totalElapsed > x)
             {
@@ -444,6 +452,7 @@ namespace ClassicUO
             }
             else
             {
+                _suppressedDraw = true;
                 SuppressDraw();
 
                 if (!gameTime.IsRunningSlowly)
@@ -493,6 +502,26 @@ namespace ClassicUO
             SelectedObject.HealthbarObject = null;
             SelectedObject.SelectedContainer = null;
 
+            //_uoSpriteBatch.Begin();
+            //_fontRenderer.Draw
+            //(
+            //    _uoSpriteBatch,
+            //    $"New Engine ❤ 😁".AsSpan(),
+            //    new Vector2(200, 100),
+            //    5f,
+            //    new FontSettings() 
+            //    { 
+            //        IsUnicode = true, 
+            //        FontIndex = 0, 
+            //        Italic = false,
+            //        Bold = false, 
+            //        Border = true,
+            //        Underline = true,
+            //    },
+            //    new Vector3(0x44, 0, 0)
+            //);
+            //_uoSpriteBatch.End();
+
             base.Draw(gameTime);
 
             Profiler.ExitContext("RenderFrame");
@@ -517,6 +546,11 @@ namespace ClassicUO
                 NetClient.Socket.Update();
                 UpdateSocketStats(NetClient.Socket, totalTime);
             }
+        }
+
+        protected override bool BeginDraw()
+        {
+            return !_suppressedDraw && base.BeginDraw();
         }
 
         private void UpdateSocketStats(NetClient socket, double totalTime)

@@ -33,12 +33,12 @@
 using System;
 using System.Runtime.CompilerServices;
 using ClassicUO.Configuration;
+using ClassicUO.Data;
 using ClassicUO.Game.Data;
 using ClassicUO.Game.Managers;
 using ClassicUO.IO.Resources;
 using ClassicUO.Renderer;
 using Microsoft.Xna.Framework;
-using IUpdateable = ClassicUO.Interfaces.IUpdateable;
 
 namespace ClassicUO.Game.GameObjects
 {
@@ -47,7 +47,7 @@ namespace ClassicUO.Game.GameObjects
         public Point RealScreenPosition;
     }
 
-    internal abstract partial class GameObject : BaseGameObject, IUpdateable
+    internal abstract partial class GameObject : BaseGameObject
     {
         private Point _screenPosition;
 
@@ -57,7 +57,6 @@ namespace ClassicUO.Game.GameObjects
 
         public int Distance
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 if (World.Player == null /*|| IsDestroyed*/)
@@ -90,6 +89,8 @@ namespace ClassicUO.Game.GameObjects
         {
         }
 
+        public abstract bool CheckMouseSelection();
+
         public int CurrentRenderIndex;
         // FIXME: remove it
         public sbyte FoliageIndex = -1;
@@ -100,11 +101,22 @@ namespace ClassicUO.Game.GameObjects
         public GameObject TNext;
         public GameObject TPrevious;
         public byte UseInRender;
-
         public ushort X, Y;
         public sbyte Z;
+        public GameObject RenderListNext;
+
+    
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Vector2 GetScreenPosition()
+        {
+           return new Vector2
+            (
+                RealScreenPosition.X + Offset.X,
+                RealScreenPosition.Y + (Offset.Y - Offset.Z)
+            );
+        }
+
         public void AddToTile(int x, int y)
         {
             if (World.Map != null)
@@ -118,14 +130,11 @@ namespace ClassicUO.Game.GameObjects
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddToTile()
         {
             AddToTile(X, Y);
         }
 
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveFromTile()
         {
             if (TPrevious != null)
@@ -146,7 +155,6 @@ namespace ClassicUO.Game.GameObjects
         {
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void UpdateScreenPosition()
         {
             _screenPosition.X = (X - Y) * 22;
@@ -155,7 +163,6 @@ namespace ClassicUO.Game.GameObjects
             OnPositionChanged();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void UpdateRealScreenPosition(int offsetX, int offsetY)
         {
             RealScreenPosition.X = _screenPosition.X - offsetX - 22;
@@ -202,12 +209,9 @@ namespace ClassicUO.Game.GameObjects
 
             Point p = RealScreenPosition;
 
-            ArtTexture texture = ArtLoader.Instance.GetTexture(Graphic);
+            var bounds = ArtLoader.Instance.GetRealArtBounds(Graphic);
 
-            if (texture != null)
-            {
-                p.Y -= texture.ImageRectangle.Height >> 1;
-            }
+            p.Y -= bounds.Height >> 1;
 
             p.X += (int) Offset.X + 22;
             p.Y += (int) (Offset.Y - Offset.Z) + 44;
@@ -355,6 +359,7 @@ namespace ClassicUO.Game.GameObjects
 
             Next = null;
             Previous = null;
+            RenderListNext = null;
 
             Clear();
             RemoveFromTile();
@@ -371,8 +376,57 @@ namespace ClassicUO.Game.GameObjects
             _screenPosition = Point.Zero;
             IsFlipped = false;
             Graphic = 0;
-            UseObjectHandles = ClosedObjectHandles = ObjectHandlesOpened = false;
+            ObjectHandlesStatus = ObjectHandlesStatus.NONE;
             FrameInfo = Rectangle.Empty;
+        }
+
+
+        public static bool CanBeDrawn(ushort g)
+        {
+            switch (g)
+            {
+                case 0x0001:
+                case 0x21BC:
+                    //case 0x5690:
+                    return false;
+
+                case 0x9E4C:
+                case 0x9E64:
+                case 0x9E65:
+                case 0x9E7D:
+                    ref StaticTiles data = ref TileDataLoader.Instance.StaticData[g];
+
+                    return !data.IsBackground && !data.IsSurface;
+            }
+
+            if (g != 0x63D3)
+            {
+                if (g >= 0x2198 && g <= 0x21A4)
+                {
+                    return false;
+                }
+
+                // Easel fix.
+                // In older clients the tiledata flag for this 
+                // item contains NoDiagonal for some reason.
+                // So the next check will make the item invisible.
+                if (g == 0x0F65 && Client.Version < ClientVersion.CV_60144)
+                {
+                    return true;
+                }
+
+                if (g < TileDataLoader.Instance?.StaticData?.Length)
+                {
+                    ref StaticTiles data = ref TileDataLoader.Instance.StaticData[g];
+
+                    if (!data.IsNoDiagonal || data.IsAnimated && World.Player != null && World.Player.Race == RaceType.GARGOYLE)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
     }
 }

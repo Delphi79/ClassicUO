@@ -39,7 +39,6 @@ using ClassicUO.Game;
 using ClassicUO.Game.GameObjects;
 using ClassicUO.Game.Managers;
 using ClassicUO.Game.UI.Gumps;
-using ClassicUO.Utility;
 using ClassicUO.Utility.Logging;
 using Microsoft.Xna.Framework;
 using TinyJson;
@@ -105,7 +104,9 @@ namespace ClassicUO.Configuration
         public bool UseOldStatusGump { get; set; }
         public int BackpackStyle { get; set; }
         public bool HighlightGameObjects { get; set; }
-        public bool HighlightMobilesByFlags { get; set; } = true;
+        public bool HighlightMobilesByParalize { get; set; } = true;
+        public bool HighlightMobilesByPoisoned { get; set; } = true;
+        public bool HighlightMobilesByInvul { get; set; } = true;
         public bool ShowMobilesHP { get; set; }
         public int MobileHPType { get; set; }     // 0 = %, 1 = line, 2 = both
         public int MobileHPShowWhen { get; set; } // 0 = Always, 1 - <100%
@@ -175,6 +176,7 @@ namespace ClassicUO.Configuration
         // Experimental
         public bool CastSpellsByOneClick { get; set; }
         public bool BuffBarTime { get; set; }
+        public bool FastSpellsAssign { get; set; }
         public bool AutoOpenDoors { get; set; }
         public bool SmoothDoors { get; set; }
         public bool AutoOpenCorpses { get; set; }
@@ -194,6 +196,9 @@ namespace ClassicUO.Configuration
 
         public Point OverrideContainerLocationPosition { get; set; } = new Point(200, 200);
         public bool DragSelectHumanoidsOnly { get; set; }
+        public int DragSelectStartX { get; set; } = 100;
+        public int DragSelectStartY { get; set; } = 100;
+        public bool DragSelectAsAnchor { get; set; } = false;
         public NameOverheadTypeAllowed NameOverheadTypeAllowed { get; set; } = NameOverheadTypeAllowed.All;
         public bool NameOverheadToggled { get; set; } = false;
         public bool ShowTargetRangeIndicator { get; set; }
@@ -340,8 +345,7 @@ namespace ClassicUO.Configuration
                         gumps.AddLast(gump);
                     }
                 }
-
-
+                
                 LinkedListNode<Gump> first = gumps.First;
 
                 while (first != null)
@@ -595,6 +599,11 @@ namespace ClassicUO.Configuration
                                 case GumpType.NetStats:
                                     gump = new NetworkStatsGump(100, 100);
 
+                                    break;
+
+                                case GumpType.NameOverHeadHandler:
+                                    NameOverHeadHandlerGump.LastPosition = new Point(x, y);
+                                    // Gump gets opened by NameOverHeadManager, we just want to save the last position from profile
                                     break;
                             }
 

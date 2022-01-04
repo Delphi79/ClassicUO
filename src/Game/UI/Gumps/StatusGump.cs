@@ -228,18 +228,11 @@ namespace ClassicUO.Game.UI.Gumps
         public StatusGumpOld()
         {
             Point p = Point.Zero;
-            _labels = new Label[(int) MobileStats.NumStats];
+            _labels = new Label[(int) MobileStats.NumStats];            
 
             Add(new GumpPic(0, 0, 0x0802, 0));
             p.X = 244;
             p.Y = 112;
-
-            //if (p.X == 0)
-            //{
-            //    p.X = 243;
-            //    p.Y = 150;
-            //}
-
 
             Label text = new Label(!string.IsNullOrEmpty(World.Player.Name) ? World.Player.Name : string.Empty, false, 0x0386, font: 1)
             {
@@ -250,28 +243,88 @@ namespace ClassicUO.Game.UI.Gumps
             _labels[(int) MobileStats.Name] = text;
             Add(text);
 
+            int xOffset = 0;
+
+            if (Client.Version >= ClientVersion.CV_5020)
+            {
+                Add
+                (
+                    new Button((int)ButtonType.BuffIcon, 0x7538, 0x7539, 0x7539)
+                    {
+                        X = 20,
+                        Y = 42,
+                        ButtonAction = ButtonAction.Activate
+                    }
+                );
+            }           
+            
+            Lock status = World.Player.StrLock;
+            xOffset = Client.UseUOPGumps ? 28 : 40;
+            ushort gumpID = GetStatLockGraphic(status);
+
+            Add(_lockers[0] = new GumpPic(xOffset, 62, gumpID, 0));
+
+            _lockers[0].MouseUp += (sender, e) =>
+            {
+                World.Player.StrLock = (Lock)(((byte)World.Player.StrLock + 1) % 3);
+                GameActions.ChangeStatLock(0, World.Player.StrLock);
+                ushort gumpid = GetStatLockGraphic(World.Player.StrLock);
+
+                _lockers[0].Graphic = gumpid;
+            };
+
             text = new Label(World.Player.Strength.ToString(), false, 0x0386, font: 1)
             {
                 X = 86,
-                Y = 61
+                Y = 62
             };
 
             _labels[(int) MobileStats.Strength] = text;
             Add(text);
 
+            status = World.Player.DexLock;
+            xOffset = Client.UseUOPGumps ? 28 : 40;
+            gumpID = GetStatLockGraphic(status);
+
+            Add(_lockers[1] = new GumpPic(xOffset, 74, gumpID, 0));
+
+            _lockers[1].MouseUp += (sender, e) =>
+            {
+                World.Player.DexLock = (Lock)(((byte)World.Player.DexLock + 1) % 3);
+                GameActions.ChangeStatLock(1, World.Player.DexLock);
+                ushort gumpid = GetStatLockGraphic(World.Player.DexLock);
+
+                _lockers[1].Graphic = gumpid;
+            };
+
             text = new Label(World.Player.Dexterity.ToString(), false, 0x0386, font: 1)
             {
                 X = 86,
-                Y = 73
+                Y = 74
             };
 
             _labels[(int) MobileStats.Dexterity] = text;
             Add(text);
 
+            status = World.Player.IntLock;
+            xOffset = Client.UseUOPGumps ? 28 : 40;
+            gumpID = GetStatLockGraphic(status);
+
+            Add(_lockers[2] = new GumpPic(xOffset, 86, gumpID, 0));
+
+            _lockers[2].MouseUp += (sender, e) =>
+            {
+                World.Player.IntLock = (Lock)(((byte)World.Player.IntLock + 1) % 3);
+                GameActions.ChangeStatLock(2, World.Player.IntLock);
+                ushort gumpid = GetStatLockGraphic(World.Player.IntLock);
+
+                _lockers[2].Graphic = gumpid;
+            };
+
             text = new Label(World.Player.Intelligence.ToString(), false, 0x0386, font: 1)
             {
                 X = 86,
-                Y = 85
+                Y = 86
             };
 
             _labels[(int) MobileStats.Intelligence] = text;
@@ -280,7 +333,7 @@ namespace ClassicUO.Game.UI.Gumps
             text = new Label(World.Player.IsFemale ? ResGumps.Female : ResGumps.Male, false, 0x0386, font: 1)
             {
                 X = 86,
-                Y = 97
+                Y = 98
             };
 
             _labels[(int) MobileStats.Sex] = text;
@@ -289,7 +342,7 @@ namespace ClassicUO.Game.UI.Gumps
             text = new Label(World.Player.PhysicalResistance.ToString(), false, 0x0386, font: 1)
             {
                 X = 86,
-                Y = 109
+                Y = 110
             };
 
             _labels[(int) MobileStats.AR] = text;
@@ -298,7 +351,7 @@ namespace ClassicUO.Game.UI.Gumps
             text = new Label($"{World.Player.Hits}/{World.Player.HitsMax}", false, 0x0386, font: 1)
             {
                 X = 171,
-                Y = 61
+                Y = 62
             };
 
             _labels[(int) MobileStats.HealthCurrent] = text;
@@ -307,7 +360,7 @@ namespace ClassicUO.Game.UI.Gumps
             text = new Label($"{World.Player.Mana}/{World.Player.ManaMax}", false, 0x0386, font: 1)
             {
                 X = 171,
-                Y = 73
+                Y = 74
             };
 
             _labels[(int) MobileStats.ManaCurrent] = text;
@@ -316,7 +369,7 @@ namespace ClassicUO.Game.UI.Gumps
             text = new Label($"{World.Player.Stamina}/{World.Player.StaminaMax}", false, 0x0386, font: 1)
             {
                 X = 171,
-                Y = 85
+                Y = 86
             };
 
             _labels[(int) MobileStats.StaminaCurrent] = text;
@@ -325,16 +378,16 @@ namespace ClassicUO.Game.UI.Gumps
             text = new Label(World.Player.Gold.ToString(), false, 0x0386, font: 1)
             {
                 X = 171,
-                Y = 97
+                Y = 98
             };
 
             _labels[(int) MobileStats.Gold] = text;
             Add(text);
 
-            text = new Label(World.Player.Weight.ToString(), false, 0x0386, font: 1)
+            text = new Label($"{World.Player.Weight}/{World.Player.WeightMax}", false, 0x0386, font: 1)
             {
                 X = 171,
-                Y = 109
+                Y = 110
             };
 
             _labels[(int) MobileStats.WeightCurrent] = text;
@@ -350,7 +403,7 @@ namespace ClassicUO.Game.UI.Gumps
                     34,
                     12,
                     ResGumps.Strength,
-                    1
+                    0
                 ) { CanMove = true }
             );
 
@@ -363,7 +416,7 @@ namespace ClassicUO.Game.UI.Gumps
                     34,
                     12,
                     ResGumps.Dex,
-                    1
+                    0
                 ) { CanMove = true }
             );
 
@@ -376,7 +429,7 @@ namespace ClassicUO.Game.UI.Gumps
                     34,
                     12,
                     ResGumps.Intelligence,
-                    1
+                    0
                 ) { CanMove = true }
             );
 
@@ -389,7 +442,7 @@ namespace ClassicUO.Game.UI.Gumps
                     34,
                     12,
                     ResGumps.Sex,
-                    1
+                    0
                 ) { CanMove = true }
             );
 
@@ -402,7 +455,7 @@ namespace ClassicUO.Game.UI.Gumps
                     34,
                     12,
                     ResGumps.Armor,
-                    1
+                    0
                 ) { CanMove = true }
             );
 
@@ -415,7 +468,7 @@ namespace ClassicUO.Game.UI.Gumps
                     66,
                     12,
                     ResGeneral.Hits,
-                    1
+                    0
                 ) { CanMove = true }
             );
 
@@ -428,7 +481,7 @@ namespace ClassicUO.Game.UI.Gumps
                     66,
                     12,
                     ResGeneral.Mana,
-                    1
+                    0
                 ) { CanMove = true }
             );
 
@@ -441,7 +494,7 @@ namespace ClassicUO.Game.UI.Gumps
                     66,
                     12,
                     ResGumps.Stamina,
-                    1
+                    0
                 ) { CanMove = true }
             );
 
@@ -454,7 +507,7 @@ namespace ClassicUO.Game.UI.Gumps
                     66,
                     12,
                     ResGumps.Gold,
-                    1
+                    0
                 ) { CanMove = true }
             );
 
@@ -467,7 +520,7 @@ namespace ClassicUO.Game.UI.Gumps
                     66,
                     12,
                     ResGeneral.Weight,
-                    1
+                    0
                 ) { CanMove = true }
             );
 
@@ -505,7 +558,7 @@ namespace ClassicUO.Game.UI.Gumps
 
                 _labels[(int) MobileStats.Gold].Text = World.Player.Gold.ToString();
 
-                _labels[(int) MobileStats.WeightCurrent].Text = World.Player.Weight.ToString();
+                _labels[(int) MobileStats.WeightCurrent].Text = $"{World.Player.Weight}/{World.Player.WeightMax}";
             }
 
             base.Update(totalTime, frameTime);
@@ -647,7 +700,7 @@ namespace ClassicUO.Game.UI.Gumps
                             59,
                             24,
                             ResGumps.HitChanceIncrease,
-                            1
+                            0
                         ) { CanMove = true }
                     );
                 }
@@ -671,7 +724,7 @@ namespace ClassicUO.Game.UI.Gumps
                         59,
                         24,
                         ResGumps.Strength,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -684,7 +737,7 @@ namespace ClassicUO.Game.UI.Gumps
                         59,
                         24,
                         ResGumps.Dexterity,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -697,7 +750,7 @@ namespace ClassicUO.Game.UI.Gumps
                         59,
                         24,
                         ResGumps.Intelligence,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -718,7 +771,7 @@ namespace ClassicUO.Game.UI.Gumps
                             59,
                             24,
                             ResGumps.DefenseChanceIncrease,
-                            1
+                            0
                         ) { CanMove = true }
                     );
                 }
@@ -837,7 +890,7 @@ namespace ClassicUO.Game.UI.Gumps
                         59,
                         24,
                         ResGumps.HitPoints,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -850,7 +903,7 @@ namespace ClassicUO.Game.UI.Gumps
                         59,
                         24,
                         ResGumps.Stamina,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -863,7 +916,7 @@ namespace ClassicUO.Game.UI.Gumps
                         59,
                         24,
                         ResGeneral.Mana,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -882,7 +935,7 @@ namespace ClassicUO.Game.UI.Gumps
                             65,
                             24,
                             ResGumps.LowerManaCost,
-                            1
+                            0
                         ) { CanMove = true }
                     );
                 }
@@ -941,7 +994,7 @@ namespace ClassicUO.Game.UI.Gumps
                         65,
                         24,
                         ResGumps.MaximumStats,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -954,7 +1007,7 @@ namespace ClassicUO.Game.UI.Gumps
                         65,
                         24,
                         ResGumps.Luck,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -967,7 +1020,7 @@ namespace ClassicUO.Game.UI.Gumps
                         65,
                         24,
                         ResGeneral.Weight,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -988,7 +1041,7 @@ namespace ClassicUO.Game.UI.Gumps
                             69,
                             24,
                             ResGumps.WeaponDamageIncrease,
-                            1
+                            0
                         ) { CanMove = true }
                     );
 
@@ -1001,7 +1054,7 @@ namespace ClassicUO.Game.UI.Gumps
                             69,
                             24,
                             ResGumps.SwingSpeedIncrease,
-                            1
+                            0
                         ) { CanMove = true }
                     );
                 }
@@ -1020,7 +1073,7 @@ namespace ClassicUO.Game.UI.Gumps
                             69,
                             24,
                             ResGumps.Gold,
-                            1
+                            0
                         ) { CanMove = true }
                     );
                 }
@@ -1040,7 +1093,7 @@ namespace ClassicUO.Game.UI.Gumps
                         69,
                         24,
                         ResGumps.Damage,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -1053,7 +1106,7 @@ namespace ClassicUO.Game.UI.Gumps
                         69,
                         24,
                         ResGumps.Followers,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -1080,7 +1133,7 @@ namespace ClassicUO.Game.UI.Gumps
                             55,
                             24,
                             ResGumps.LowerReagentCost,
-                            1
+                            0
                         ) { CanMove = true }
                     );
 
@@ -1093,7 +1146,7 @@ namespace ClassicUO.Game.UI.Gumps
                             55,
                             24,
                             ResGumps.SpellDamageIncrease,
-                            1
+                            0
                         ) { CanMove = true }
                     );
 
@@ -1106,7 +1159,7 @@ namespace ClassicUO.Game.UI.Gumps
                             55,
                             24,
                             ResGumps.FasterCasting,
-                            1
+                            0
                         ) { CanMove = true }
                     );
 
@@ -1119,7 +1172,7 @@ namespace ClassicUO.Game.UI.Gumps
                             55,
                             24,
                             ResGumps.FasterCastRecovery,
-                            1
+                            0
                         ) { CanMove = true }
                     );
 
@@ -1136,7 +1189,7 @@ namespace ClassicUO.Game.UI.Gumps
                             55,
                             24,
                             ResGumps.Gold,
-                            1
+                            0
                         ) { CanMove = true }
                     );
 
@@ -1175,7 +1228,7 @@ namespace ClassicUO.Game.UI.Gumps
                         40,
                         14,
                         ResGumps.PhysicalResistance,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -1188,7 +1241,7 @@ namespace ClassicUO.Game.UI.Gumps
                         40,
                         14,
                         ResGumps.FireResistance,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -1201,7 +1254,7 @@ namespace ClassicUO.Game.UI.Gumps
                         40,
                         14,
                         ResGumps.ColdResistance,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -1214,7 +1267,7 @@ namespace ClassicUO.Game.UI.Gumps
                         40,
                         14,
                         ResGumps.PoisonResistance,
-                        1
+                        0
                     ) { CanMove = true }
                 );
 
@@ -1227,7 +1280,7 @@ namespace ClassicUO.Game.UI.Gumps
                         40,
                         14,
                         ResGumps.EnergyResistance,
-                        1
+                        0
                     ) { CanMove = true }
                 );
             }
@@ -1246,7 +1299,7 @@ namespace ClassicUO.Game.UI.Gumps
                             34,
                             12,
                             ResGumps.MaxStats,
-                            1
+                            0
                         ) { CanMove = true }
                     );
                 }
@@ -1265,7 +1318,7 @@ namespace ClassicUO.Game.UI.Gumps
                             34,
                             12,
                             ResGumps.MaxStats,
-                            1
+                            0
                         ) { CanMove = true }
                     );
 
@@ -1278,7 +1331,7 @@ namespace ClassicUO.Game.UI.Gumps
                             34,
                             12,
                             ResGumps.Followers,
-                            1
+                            0
                         ) { CanMove = true }
                     );
                 }
@@ -1300,7 +1353,7 @@ namespace ClassicUO.Game.UI.Gumps
                     16,
                     16,
                     ResGumps.Minimize,
-                    1
+                    0
                 ) { CanMove = true }
             );
 

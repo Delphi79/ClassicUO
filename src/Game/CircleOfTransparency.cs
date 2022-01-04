@@ -64,8 +64,6 @@ namespace ClassicUO.Game
         private static short _width, _height;
         private static int _radius;
 
-        private static Vector3 _hueVector;
-
 
         public static uint[] CreateCircleTexture(int radius, ref short width, ref short height)
         {
@@ -97,15 +95,33 @@ namespace ClassicUO.Game
             return pixels;
         }
 
-        public static void Draw(UltimaBatcher2D batcher, int x, int y)
+        public static void Draw(UltimaBatcher2D batcher, Vector2 pos, ushort hue = 0)
         {
             if (_texture != null)
             {
-                x -= _width >> 1;
-                y -= _height >> 1;
+                pos.X -= _width >> 1;
+                pos.Y -= _height >> 1;
 
+                Vector3 hueVector = new Vector3();
+
+                if (hue == 0)
+                {
+                    hueVector.X = 0;
+                    hueVector.Y = 0f;
+                }
+                else
+                {
+                    hueVector.X = hue;
+                    hueVector.Y = 1f;
+                }
+               
                 batcher.SetStencil(_stencil.Value);
-                batcher.Draw2D(_texture, x, y, ref _hueVector);
+                batcher.Draw
+                (
+                    _texture,
+                    pos,
+                    hueVector
+                );
                 batcher.SetStencil(null);
             }
         }
@@ -120,8 +136,6 @@ namespace ClassicUO.Game
             {
                 radius = Constants.MAX_CIRCLE_OF_TRANSPARENCY_RADIUS;
             }
-
-            radius += 44;
 
             if (_radius == radius && _texture != null && !_texture.IsDisposed)
             {
@@ -151,7 +165,7 @@ namespace ClassicUO.Game
             }
 
             _texture = new Texture2D(Client.Game.GraphicsDevice, _width, _height);
-            _texture.SetData(pixels);
+            _texture.SetData(pixels);            
         }
     }
 }
