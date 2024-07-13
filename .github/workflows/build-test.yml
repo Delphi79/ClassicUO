@@ -6,11 +6,13 @@ on:
     paths-ignore:
       - '**/build-release.yml'
       - 'appveyor.yml'
+      - '**/README.md'
   pull_request:
     branches: "*"
     paths-ignore:
       - '**/build-release.yml'
       - 'appveyor.yml'
+      - '**/README.md'
 
 
 env:
@@ -24,18 +26,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-       os: [ macos-latest, ubuntu-latest, windows-latest ]
+       os: [ macos-12, ubuntu-latest, windows-latest ]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       
     - name: Get submodules
-      run: git submodule update --init --recursive
+      run: |
+        git config --global url."https://".insteadOf git://
+        git submodule update --init --recursive
         
-    - name: Setup .NET 5
-      uses: actions/setup-dotnet@v1
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 5.0.x
+        dotnet-version: 8.0.x
+        include-prerelease: false
         
     - name: Restore
       run: dotnet restore
@@ -44,5 +49,5 @@ jobs:
       run: dotnet build -c Release
       
     - name: Test
-      run: dotnet test --verbosity normal
+      run: dotnet test --verbosity normal tests/ClassicUO.UnitTests
    
