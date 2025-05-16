@@ -1,34 +1,4 @@
-#region license
-
-// Copyright (c) 2024, andreakarasho
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by andreakarasho - https://github.com/andreakarasho
-// 4. Neither the name of the copyright holder nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-#endregion
+// SPDX-License-Identifier: BSD-2-Clause
 
 using System;
 using System.Linq;
@@ -204,9 +174,11 @@ namespace ClassicUO.Game.Scenes
             foreach (Mobile mobile in _world.Mobiles.Values)
             {
                 if (ProfileManager.CurrentProfile.DragSelectHumanoidsOnly && !mobile.IsHuman)
-                {
                     continue;
-                }
+
+                // Skip if is Renamable (follower), or non-hostile notoriety
+                if (ProfileManager.CurrentProfile.DragSelectHostileOnly && (mobile.IsRenamable || mobile.NotorietyFlag is NotorietyFlag.Ally or NotorietyFlag.Innocent or NotorietyFlag.Invulnerable))
+                    continue;
 
                 Point p = mobile.RealScreenPosition;
 
@@ -529,7 +501,7 @@ namespace ClassicUO.Game.Scenes
                         if (gobj is Land land) { }
                         else
                         {
-                            ref StaticTiles itemData = ref TileDataLoader.Instance.StaticData[
+                            ref StaticTiles itemData = ref Client.Game.UO.FileManager.TileData.StaticData[
                                 gobj.Graphic
                             ];
 
@@ -682,7 +654,7 @@ namespace ClassicUO.Game.Scenes
 
                         if (string.IsNullOrEmpty(name))
                         {
-                            name = ClilocLoader.Instance.GetString(
+                            name = Client.Game.UO.FileManager.Clilocs.GetString(
                                 1020000 + st.Graphic,
                                 st.ItemData.Name
                             );
@@ -712,7 +684,7 @@ namespace ClassicUO.Game.Scenes
 
                         if (string.IsNullOrEmpty(name))
                         {
-                            name = ClilocLoader.Instance.GetString(
+                            name = Client.Game.UO.FileManager.Clilocs.GetString(
                                 1020000 + multi.Graphic,
                                 multi.ItemData.Name
                             );
@@ -898,7 +870,7 @@ namespace ClassicUO.Game.Scenes
                 {
                     if (obj is Static || obj is Multi || obj is Item)
                     {
-                        ref StaticTiles itemdata = ref TileDataLoader.Instance.StaticData[
+                        ref StaticTiles itemdata = ref Client.Game.UO.FileManager.TileData.StaticData[
                             obj.Graphic
                         ];
 
@@ -1103,7 +1075,7 @@ namespace ClassicUO.Game.Scenes
                             );
                             customgump?.Dispose();
 
-                            if (obj == _world.Player)
+                            if (obj == _world.Player && ProfileManager.CurrentProfile.StatusGumpBarMutuallyExclusive)
                             {
                                 StatusGumpBase.GetStatusGump()?.Dispose();
                             }

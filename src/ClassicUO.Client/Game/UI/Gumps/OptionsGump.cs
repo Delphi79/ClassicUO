@@ -1,34 +1,4 @@
-#region license
-
-// Copyright (c) 2024, andreakarasho
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by andreakarasho - https://github.com/andreakarasho
-// 4. Neither the name of the copyright holder nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-#endregion
+// SPDX-License-Identifier: BSD-2-Clause
 
 using System;
 using System.Collections.Generic;
@@ -82,7 +52,7 @@ namespace ClassicUO.Game.UI.Gumps
 
         //counters
         private Checkbox _enableCounters, _highlightOnUse, _highlightOnAmount, _enableAbbreviatedAmount;
-        private Checkbox _enableDragSelect, _dragSelectHumanoidsOnly;
+        private Checkbox _enableDragSelect, _dragSelectHumanoidsOnly, _dragSelectHostileOnly;
 
         // sounds
         private Checkbox _enableSounds, _enableMusic, _footStepsSound, _combatMusic, _musicInBackground, _loginMusic;
@@ -134,6 +104,7 @@ namespace ClassicUO.Game.UI.Gumps
         private ClickableColorBox _innocentColorPickerBox, _friendColorPickerBox, _crimialColorPickerBox, _canAttackColorPickerBox, _enemyColorPickerBox, _murdererColorPickerBox, _neutralColorPickerBox, _beneficColorPickerBox, _harmfulColorPickerBox;
         private HSliderBar _lightBar;
         private Checkbox _buffBarTime, _uiButtonsSingleClick, _queryBeforAttackCheckbox, _queryBeforeBeneficialCheckbox, _spellColoringCheckbox, _spellFormatCheckbox, _enableFastSpellsAssign;
+        private Checkbox _newTargetSystem, _showDPSCheckbox;
 
         // macro
         private MacroControl _macroControl;
@@ -150,7 +121,7 @@ namespace ClassicUO.Game.UI.Gumps
         private Checkbox _showHouseContent;
         private Checkbox _showInfoBar;
         private Checkbox _ignoreAllianceMessages;
-        private Checkbox _ignoreGuildMessages;
+        private Checkbox _ignoreGuildMessages, _useAlternateJournal, _partyMessagesOverhead;
 
         // general
         private HSliderBar _sliderFPS, _circleOfTranspRadius;
@@ -163,9 +134,10 @@ namespace ClassicUO.Game.UI.Gumps
         private FontSelector _tooltip_font_selector;
         private HSliderBar _dragSelectStartX, _dragSelectStartY;
         private Checkbox _dragSelectAsAnchor;
+        private NiceButton _setAsNewDefault;
 
         // video
-        private Checkbox _use_old_status_gump, _windowBorderless, _enableDeathScreen, _enableBlackWhiteEffect, _altLights, _enableLight, _enableShadows, _enableShadowsStatics, _auraMouse, _runMouseInSeparateThread, _useColoredLights, _darkNights, _partyAura, _hideChatGradient, _animatedWaterEffect;
+        private Checkbox _use_old_status_gump, _statusGumpBarMutuallyExclusive, _windowBorderless, _enableDeathScreen, _enableBlackWhiteEffect, _altLights, _enableLight, _enableShadows, _enableShadowsStatics, _auraMouse, _runMouseInSeparateThread, _useColoredLights, _darkNights, _partyAura, _hideChatGradient, _animatedWaterEffect;
         private Combobox _lightLevelType;
         private Checkbox _use_smooth_boat_movement;
         private HSliderBar _terrainShadowLevel;
@@ -987,7 +959,21 @@ namespace ClassicUO.Game.UI.Gumps
                 )
             );
 
-            _use_old_status_gump.IsVisible = !CUOEnviroment.IsOutlands;
+            _use_old_status_gump.IsVisible = true;
+            
+            section3.Add
+            (
+                _statusGumpBarMutuallyExclusive = AddCheckBox
+                (
+                    null,
+                    ResGumps.StatusGumpBarMutuallyExclusive,
+                    _currentProfile.StatusGumpBarMutuallyExclusive,
+                    startX,
+                    startY
+                )
+            );
+            
+            _statusGumpBarMutuallyExclusive.IsVisible = true;
 
             section3.Add
             (
@@ -1242,6 +1228,18 @@ namespace ClassicUO.Game.UI.Gumps
                     startY
                 )
             );
+            
+            section4.Add
+            (
+                _dragSelectHostileOnly = AddCheckBox
+                (
+                    null,
+                    ResGumps.DragHostileOnly,
+                    _currentProfile.DragSelectHostileOnly,
+                    startX,
+                    startY
+                )
+            );
 
             section4.Add(new Label(ResGumps.DragSelectStartingPosX, true, HUE_FONT));
             section4.Add(_dragSelectStartX = new HSliderBar(startX, startY, 200, 0, Client.Game.Scene.Camera.Bounds.Width, _currentProfile.DragSelectStartX, HSliderBarStyle.MetalWidgetRecessedBar, true, 0, HUE_FONT));
@@ -1300,6 +1298,25 @@ namespace ClassicUO.Game.UI.Gumps
             );
 
             section4.PopIndent();
+
+            section4.Add
+            (
+                _setAsNewDefault = new NiceButton
+                (
+                    startX, 
+                    startY,
+                    section4.Width - 18,
+                    25,
+                    ButtonAction.Default,
+                    ResGumps.SetAsNewDefault
+                )
+                { IsSelectable = true, IsSelected = true } //For styling, easier to distinguish as a button.
+            );
+            _setAsNewDefault.MouseUp += (s, e) => 
+            {
+                ProfileManager.SetProfileAsDefault(_currentProfile);
+                GameActions.Print(World, ResGeneral.DefaultProfileSet);
+            };
 
 
             SettingsSection section5 = AddSettingsSection(box, "Terrain & Statics");
@@ -2485,6 +2502,28 @@ namespace ClassicUO.Game.UI.Gumps
                 startY
             );
 
+            startY += _ignoreAllianceMessages.Height + 2;
+
+            _useAlternateJournal = AddCheckBox
+            (
+                rightArea,
+                ResGumps.UseAlternateJournal,
+                _currentProfile.UseAlternateJournal,
+                startX,
+                startY
+            );
+
+            startY += _useAlternateJournal.Height + 2;
+
+            _partyMessagesOverhead = AddCheckBox
+            (
+                rightArea,
+                ResGumps.OverheadPartyMessages,
+                _currentProfile.OverheadPartyMessages,
+                startX,
+                startY
+            );
+
             startY += 35;
 
             _randomizeColorsButton = new NiceButton
@@ -2634,6 +2673,17 @@ namespace ClassicUO.Game.UI.Gumps
             int startX = 5;
             int startY = 5;
 
+
+            _newTargetSystem = AddCheckBox(
+                rightArea,
+                ResGumps.NewTargetSystem,
+                _currentProfile.UseNewTargetSystem,
+                startX,
+                startY
+            );
+
+            startY += _newTargetSystem.Height + 2;
+
             _holdDownKeyTab = AddCheckBox
             (
                 rightArea,
@@ -2716,6 +2766,17 @@ namespace ClassicUO.Game.UI.Gumps
                 rightArea,
                 ResGumps.EnableFastSpellsAssign,
                 _currentProfile.FastSpellsAssign,
+                startX,
+                startY
+            );
+
+            startY += _enableFastSpellsAssign.Height + 2;
+
+            _showDPSCheckbox = AddCheckBox
+            (
+                rightArea,
+                ResGumps.ShowDPSWithDamage,
+                _currentProfile.ShowDPSWithDamageNumbers,
                 startX,
                 startY
             );
@@ -3457,6 +3518,7 @@ namespace ClassicUO.Game.UI.Gumps
                     _reduceFPSWhenInactive.IsChecked = true;
                     _highlightObjects.IsChecked = true;
                     _enableTopbar.IsChecked = false;
+                    _newTargetSystem.IsChecked = true;
                     _holdDownKeyTab.IsChecked = true;
                     _holdDownKeyAlt.IsChecked = true;
                     _closeAllAnchoredGumpsWithRClick.IsChecked = false;
@@ -3497,6 +3559,7 @@ namespace ClassicUO.Game.UI.Gumps
                     _textFading.IsChecked = true;
                     _enableDragSelect.IsChecked = false;
                     _dragSelectHumanoidsOnly.IsChecked = false;
+                    _dragSelectHostileOnly.IsChecked = false;
                     _showTargetRangeIndicator.IsChecked = false;
                     _customBars.IsChecked = false;
                     _customBarsBBG.IsChecked = false;
@@ -3508,6 +3571,7 @@ namespace ClassicUO.Game.UI.Gumps
                     _use_smooth_boat_movement.IsChecked = false;
                     _hideScreenshotStoredInMessage.IsChecked = false;
                     _use_old_status_gump.IsChecked = false;
+                    _statusGumpBarMutuallyExclusive.IsChecked = true;
                     _auraType.SelectedIndex = 0;
                     _fieldsType.SelectedIndex = 0;
 
@@ -3605,10 +3669,13 @@ namespace ClassicUO.Game.UI.Gumps
                     _hideChatGradient.IsChecked = false;
                     _ignoreGuildMessages.IsChecked = false;
                     _ignoreAllianceMessages.IsChecked = false;
+                    _useAlternateJournal.IsChecked = false;
+                    _partyMessagesOverhead.IsChecked = false;
 
                     break;
 
                 case 8: // combat
+                    _showDPSCheckbox.IsChecked = false;
                     _innocentColorPickerBox.Hue = 0x005A;
                     _friendColorPickerBox.Hue = 0x0044;
                     _crimialColorPickerBox.Hue = 0x03b2;
@@ -3698,6 +3765,7 @@ namespace ClassicUO.Game.UI.Gumps
             _currentProfile.InvulnerableHue = _invulnerableColorPickerBox.Hue;
             _currentProfile.MobileHPType = _hpComboBox.SelectedIndex;
             _currentProfile.MobileHPShowWhen = _hpComboBoxShowWhen.SelectedIndex;
+            _currentProfile.UseNewTargetSystem = _newTargetSystem.IsChecked;
             _currentProfile.HoldDownKeyTab = _holdDownKeyTab.IsChecked;
             _currentProfile.HoldDownKeyAltToCloseAnchored = _holdDownKeyAlt.IsChecked;
 
@@ -3834,6 +3902,7 @@ namespace ClassicUO.Game.UI.Gumps
             _currentProfile.ActivateChatAdditionalButtons = _chatAdditionalButtonsCheckbox.IsChecked;
             _currentProfile.ActivateChatShiftEnterSupport = _chatShiftEnterCheckbox.IsChecked;
             _currentProfile.SaveJournalToFile = _saveJournalCheckBox.IsChecked;
+            _currentProfile.OverheadPartyMessages = _partyMessagesOverhead.IsChecked;
 
             // video
             _currentProfile.EnableDeathScreen = _enableDeathScreen.IsChecked;
@@ -3845,7 +3914,7 @@ namespace ClassicUO.Game.UI.Gumps
             _currentProfile.EnableMousewheelScaleZoom = _zoomCheckbox.IsChecked;
             _currentProfile.RestoreScaleAfterUnpressCtrl = _restorezoomCheckbox.IsChecked;
 
-            if (!CUOEnviroment.IsOutlands && _use_old_status_gump.IsChecked != _currentProfile.UseOldStatusGump)
+            if (_use_old_status_gump.IsChecked != _currentProfile.UseOldStatusGump)
             {
                 StatusGumpBase status = StatusGumpBase.GetStatusGump();
 
@@ -3853,9 +3922,18 @@ namespace ClassicUO.Game.UI.Gumps
 
                 if (status != null)
                 {
-                    status.Dispose();
+                    if (_currentProfile.StatusGumpBarMutuallyExclusive)
+                        status.Dispose();
                     UIManager.Add(StatusGumpBase.AddStatusGump(World, status.ScreenCoordinateX, status.ScreenCoordinateY));
                 }
+            }
+            
+            if (_statusGumpBarMutuallyExclusive.IsChecked != _currentProfile.StatusGumpBarMutuallyExclusive)
+            {
+                var active = _currentProfile.StatusGumpBarMutuallyExclusive = _statusGumpBarMutuallyExclusive.IsChecked;
+
+                if (active && StatusGumpBase.GetStatusGump() != null && UIManager.GetGump<BaseHealthBarGump>(World.Player) is {} bar)
+                    bar.Dispose();
             }
 
 
@@ -3964,6 +4042,7 @@ namespace ClassicUO.Game.UI.Gumps
             _currentProfile.HideChatGradient = _hideChatGradient.IsChecked;
             _currentProfile.IgnoreGuildMessages = _ignoreGuildMessages.IsChecked;
             _currentProfile.IgnoreAllianceMessages = _ignoreAllianceMessages.IsChecked;
+            _currentProfile.UseAlternateJournal = _useAlternateJournal.IsChecked;
 
             // fonts
             _currentProfile.ForceUnicodeJournal = _forceUnicodeJournal.IsChecked;
@@ -3996,6 +4075,7 @@ namespace ClassicUO.Game.UI.Gumps
             _currentProfile.EnabledSpellHue = _spellColoringCheckbox.IsChecked;
             _currentProfile.EnabledSpellFormat = _spellFormatCheckbox.IsChecked;
             _currentProfile.SpellDisplayFormat = _spellFormatBox.Text;
+            _currentProfile.ShowDPSWithDamageNumbers = _showDPSCheckbox.IsChecked;
 
             // macros
             World.Macros.Save();
@@ -4095,6 +4175,8 @@ namespace ClassicUO.Game.UI.Gumps
             _currentProfile.EnableDragSelect = _enableDragSelect.IsChecked;
             _currentProfile.DragSelectModifierKey = _dragSelectModifierKey.SelectedIndex;
             _currentProfile.DragSelectHumanoidsOnly = _dragSelectHumanoidsOnly.IsChecked;
+            _currentProfile.DragSelectHostileOnly = _dragSelectHostileOnly.IsChecked;
+
             _currentProfile.DragSelectStartX = _dragSelectStartX.Value;
             _currentProfile.DragSelectStartY = _dragSelectStartY.Value;
             _currentProfile.DragSelectAsAnchor = _dragSelectAsAnchor.IsChecked;
@@ -4546,7 +4628,7 @@ namespace ClassicUO.Game.UI.Gumps
                 _databox.WantUpdateSize = true;
             }
 
-            public override void Add(Control c, int page = 0)
+            public override T Add<T>(T c, int page = 0)
             {
                 int i = _databox.Children.Count - 1;
                 int bottom = 0;
@@ -4573,6 +4655,8 @@ namespace ClassicUO.Game.UI.Gumps
                 _databox.WantUpdateSize = true;
 
                 Height += c.Height + 2;
+
+                return c;
             }
         }
 
@@ -4591,7 +4675,7 @@ namespace ClassicUO.Game.UI.Gumps
 
                 for (byte i = 0; i < max_font; i++)
                 {
-                    if (FontsLoader.Instance.UnicodeFontExists(i))
+                    if (Client.Game.UO.FileManager.Fonts.UnicodeFontExists(i))
                     {
                         Add
                         (
@@ -4673,7 +4757,7 @@ namespace ClassicUO.Game.UI.Gumps
                     maxCharsCount,
                     maxWidthText,
                     unicode,
-                    FontStyle.BlackBorder,
+                    FontStyle.Cropped | FontStyle.BlackBorder,
                     hue
                 )
                 {

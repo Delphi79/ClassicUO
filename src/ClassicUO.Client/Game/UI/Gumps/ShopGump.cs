@@ -1,34 +1,4 @@
-﻿#region license
-
-// Copyright (c) 2024, andreakarasho
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by andreakarasho - https://github.com/andreakarasho
-// 4. Neither the name of the copyright holder nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-#endregion
+﻿// SPDX-License-Identifier: BSD-2-Clause
 
 using System;
 using System.Collections.Generic;
@@ -44,6 +14,7 @@ using ClassicUO.Resources;
 using ClassicUO.Utility;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using ClassicUO.Renderer.Animations;
 
 namespace ClassicUO.Game.UI.Gumps
 {
@@ -350,7 +321,7 @@ namespace ClassicUO.Game.UI.Gumps
 
         //        if (fromcliloc)
         //        {
-        //            shopItem.SetName(ClilocLoader.Instance.Translate(it.Name, $"\t{it.Amount}\t{it.ItemData.Name}", true));
+        //            shopItem.SetName(Client.Game.UO.FileManager.Clilocs.Translate(it.Name, $"\t{it.Amount}\t{it.ItemData.Name}", true));
         //        }
         //    }
         //}
@@ -713,7 +684,7 @@ namespace ClassicUO.Game.UI.Gumps
 
                 if (SerialHelper.IsItem(serial))
                 {
-                    height = Math.Max(TileDataLoader.Instance.StaticData[graphic].Height, height);
+                    height = Math.Max(Client.Game.UO.FileManager.TileData.StaticData[graphic].Height, height);
                 }
 
                 Add(
@@ -773,10 +744,10 @@ namespace ClassicUO.Game.UI.Gumps
 
             public bool InBuyGump { get; set; }
 
-            private static byte GetAnimGroup(ushort graphic)
+            private static byte GetAnimGroup(Animations animations, ushort graphic)
             {
-                var groupType = Client.Game.UO.Animations.GetAnimType(graphic);
-                switch (AnimationsLoader.Instance.GetGroupIndex(graphic, groupType))
+                var groupType = animations.GetAnimType(graphic);
+                switch (Client.Game.UO.FileManager.Animations.GetGroupIndex(graphic, groupType))
                 {
                     case AnimationGroups.Low:
                         return (byte)LowAnimationGroup.Stand;
@@ -810,29 +781,30 @@ namespace ClassicUO.Game.UI.Gumps
 
                 if (InBuyGump && SerialHelper.IsMobile(LocalSerial))
                 {
+                    var animations = Client.Game.UO.Animations;
                     ushort graphic = Graphic;
 
-                    if (graphic >= Client.Game.UO.Animations.MaxAnimationCount)
+                    if (graphic >= animations.MaxAnimationCount)
                     {
                         graphic = 0;
                     }
 
-                    byte group = GetAnimGroup(graphic);
+                    byte group = GetAnimGroup(animations, graphic);
 
-                    var frames = Client.Game.UO.Animations.GetAnimationFrames(
+                    var frames = animations.GetAnimationFrames(
                         graphic,
                         group,
                         1,
                         out var hue2,
                         out _,
-                        true
+                        false
                     );
 
                     if (frames.Length != 0)
                     {
                         hueVector = ShaderHueTranslator.GetHueVector(
                             hue2,
-                            TileDataLoader.Instance.StaticData[Graphic].IsPartialHue,
+                            Client.Game.UO.FileManager.TileData.StaticData[Graphic].IsPartialHue,
                             1f
                         );
 
@@ -859,7 +831,7 @@ namespace ClassicUO.Game.UI.Gumps
                     ref readonly var artInfo = ref Client.Game.UO.Arts.GetArt(Graphic);
                     hueVector = ShaderHueTranslator.GetHueVector(
                         Hue,
-                        TileDataLoader.Instance.StaticData[Graphic].IsPartialHue,
+                        Client.Game.UO.FileManager.TileData.StaticData[Graphic].IsPartialHue,
                         1f
                     );
 

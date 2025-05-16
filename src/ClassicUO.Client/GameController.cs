@@ -1,34 +1,4 @@
-﻿#region license
-
-// Copyright (c) 2024, andreakarasho
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by andreakarasho - https://github.com/andreakarasho
-// 4. Neither the name of the copyright holder nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-#endregion
+﻿// SPDX-License-Identifier: BSD-2-Clause
 
 using ClassicUO.Assets;
 using ClassicUO.Configuration;
@@ -40,6 +10,7 @@ using ClassicUO.Game.Scenes;
 using ClassicUO.Game.UI.Gumps;
 using ClassicUO.Input;
 using ClassicUO.Network;
+using ClassicUO.Network.Encryption;
 using ClassicUO.Renderer;
 using ClassicUO.Resources;
 using ClassicUO.Utility;
@@ -47,6 +18,7 @@ using ClassicUO.Utility.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -65,6 +37,7 @@ namespace ClassicUO
         private UltimaBatcher2D _uoSpriteBatch;
         private bool _suppressedDraw;
         private Texture2D _background;
+        private bool _pluginsInitialized = false;
 
         public GameController(IPluginHost pluginHost)
         {
@@ -92,12 +65,16 @@ namespace ClassicUO
         public Scene Scene { get; private set; }
         public AudioManager Audio { get; private set; }
         public UltimaOnline UO { get; } = new UltimaOnline();
-
         public IPluginHost PluginHost { get; private set; }
-
         public GraphicsDeviceManager GraphicManager { get; }
         public readonly uint[] FrameDelay = new uint[2];
 
+        private readonly List<(uint, Action)> _queuedActions = new ();
+
+        public void EnqueueAction(uint time, Action action)
+        {
+            _queuedActions.Add((Time.Ticks + time, action));
+        }
 
         protected override void Initialize()
         {
@@ -121,12 +98,9 @@ namespace ClassicUO
         {
             base.LoadContent();
 
-            MapLoader.MapsLayouts = Settings.GlobalSettings.MapsLayouts;
-
             Fonts.Initialize(GraphicsDevice);
             SolidColorTextureCache.Initialize(GraphicsDevice);
             Audio = new AudioManager();
-            Audio.Initialize();
 
             var bytes = Loader.GetBackgroundImage().ToArray();
             using var ms = new MemoryStream(bytes);
@@ -136,15 +110,18 @@ namespace ClassicUO
             SetScene(new MainScene(this));
 #else
             UO.Load(this);
+            Audio.Initialize();
+            // TODO: temporary fix to avoid crash when laoding plugins
+            Settings.GlobalSettings.Encryption = (byte) NetClient.Socket.Load(UO.FileManager.Version, (EncryptionType) Settings.GlobalSettings.Encryption);
 
             Log.Trace("Loading plugins...");
-
             PluginHost?.Initialize();
 
             foreach (string p in Settings.GlobalSettings.Plugins)
             {
                 Plugin.Create(p);
             }
+            _pluginsInitialized = true;
 
             Log.Trace("Done!");
 
@@ -365,7 +342,7 @@ namespace ClassicUO
             Mouse.Update();
 
             var data = NetClient.Socket.CollectAvailableData();
-            var packetsCount = PacketHandlers.Handler.ParsePackets(UO.World, data);
+            var packetsCount = PacketHandlers.Handler.ParsePackets(NetClient.Socket, UO.World, data);
 
             NetClient.Socket.Statistics.TotalPacketsReceived += (uint)packetsCount;
             NetClient.Socket.Flush();
@@ -419,7 +396,20 @@ namespace ClassicUO
             UO.GameCursor?.Update();
             Audio?.Update();
 
-            base.Update(gameTime);
+
+            for (var i = _queuedActions.Count - 1; i >= 0; i--)
+            {
+                (var time, var fn) = _queuedActions[i];
+
+                if (Time.Ticks > time)
+                {
+                    fn();
+                    _queuedActions.RemoveAt(i);
+                    break;
+                }
+            }
+
+             base.Update(gameTime);
         }
 
         protected override void Draw(GameTime gameTime)
@@ -519,7 +509,9 @@ namespace ClassicUO
         {
             SDL_Event* sdlEvent = (SDL_Event*)ptr;
 
-            if (Plugin.ProcessWndProc(sdlEvent) != 0)
+            // Don't pass SDL events to the plugin host before the plugins are initialized
+            // or the garbage collector can get screwed up
+            if (_pluginsInitialized && Plugin.ProcessWndProc(sdlEvent) != 0)
             {
                 if (sdlEvent->type == SDL_EventType.SDL_MOUSEMOTION)
                 {

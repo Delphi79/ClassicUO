@@ -1,34 +1,4 @@
-﻿#region license
-
-// Copyright (c) 2024, andreakarasho
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. All advertising materials mentioning features or use of this software
-//    must display the following acknowledgement:
-//    This product includes software developed by andreakarasho - https://github.com/andreakarasho
-// 4. Neither the name of the copyright holder nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-#endregion
+﻿// SPDX-License-Identifier: BSD-2-Clause
 
 using System;
 using System.Collections.Generic;
@@ -109,7 +79,7 @@ namespace ClassicUO.Game
         };
 
         private readonly Aura _aura;
-        private readonly CustomBuildObject[] _componentsList = new CustomBuildObject[10];
+        private readonly List<CustomBuildObject> _componentsList = new ();
         private readonly int[,] _cursorOffset = new int[2, 16];
         private readonly IntPtr[,] _cursors_ptr = new IntPtr[3, 16];
         private ushort _graphic = 0x2073;
@@ -189,27 +159,27 @@ namespace ClassicUO.Game
         {
             ushort graphic = GetDraggingItemGraphic();
 
-            if (graphic != 0xFFFF)
+            if (graphic == 0xFFFF)
             {
-                ref readonly var artInfo = ref Client.Game.UO.Arts.GetArt(graphic);
-
-                float scale = 1;
-
-                if (
-                    ProfileManager.CurrentProfile != null
-                    && ProfileManager.CurrentProfile.ScaleItemsInsideContainers
-                )
-                {
-                    scale = UIManager.ContainerScale;
-                }
-
-                return new Point(
-                    (int)((artInfo.UV.Width >> 1) * scale) - ItemHold.MouseOffset.X,
-                    (int)((artInfo.UV.Height >> 1) * scale) - ItemHold.MouseOffset.Y
-                );
+                return Point.Zero;
             }
 
-            return Point.Zero;
+            ref readonly var artInfo = ref (ItemHold.IsGumpTexture ? ref Client.Game.UO.Gumps.GetGump(graphic) : ref Client.Game.UO.Arts.GetArt(graphic));
+
+            float scale = 1;
+
+            if (
+                ProfileManager.CurrentProfile != null
+                && ProfileManager.CurrentProfile.ScaleItemsInsideContainers
+            )
+            {
+                scale = UIManager.ContainerScale;
+            }
+
+            return new Point(
+                (int)((artInfo.UV.Width >> 1) * scale) - ItemHold.MouseOffset.X,
+                (int)((artInfo.UV.Height >> 1) * scale) - ItemHold.MouseOffset.Y
+            );
         }
 
         public void Update()
@@ -249,38 +219,40 @@ namespace ClassicUO.Game
                 }
             }
 
-            if (ItemHold.Enabled)
+            if (!ItemHold.Enabled)
             {
-                ushort draggingGraphic = GetDraggingItemGraphic();
+                return;
+            }
+            ushort draggingGraphic = GetDraggingItemGraphic();
 
-                if (draggingGraphic != 0xFFFF && ItemHold.IsFixedPosition && !UIManager.IsDragging)
+            if (draggingGraphic == 0xFFFF || !ItemHold.IsFixedPosition || UIManager.IsDragging)
+            {
+                return;
+            }
+            ref readonly var artInfo = ref (ItemHold.IsGumpTexture ? ref Client.Game.UO.Gumps.GetGump(draggingGraphic) : ref Client.Game.UO.Arts.GetArt(draggingGraphic));
+
+            Point offset = GetDraggingItemOffset();
+
+            int x = ItemHold.FixedX - offset.X;
+            int y = ItemHold.FixedY - offset.Y;
+
+            if (
+                Mouse.Position.X >= x
+                && Mouse.Position.X < x + artInfo.UV.Width
+                && Mouse.Position.Y >= y
+                && Mouse.Position.Y < y + artInfo.UV.Height
+            )
+            {
+                if (!ItemHold.IgnoreFixedPosition)
                 {
-                    ref readonly var artInfo = ref Client.Game.UO.Arts.GetArt(draggingGraphic);
-
-                    Point offset = GetDraggingItemOffset();
-
-                    int x = ItemHold.FixedX - offset.X;
-                    int y = ItemHold.FixedY - offset.Y;
-
-                    if (
-                        Mouse.Position.X >= x
-                        && Mouse.Position.X < x + artInfo.UV.Width
-                        && Mouse.Position.Y >= y
-                        && Mouse.Position.Y < y + artInfo.UV.Height
-                    )
-                    {
-                        if (!ItemHold.IgnoreFixedPosition)
-                        {
-                            ItemHold.IsFixedPosition = false;
-                            ItemHold.FixedX = 0;
-                            ItemHold.FixedY = 0;
-                        }
-                    }
-                    else if (ItemHold.IgnoreFixedPosition)
-                    {
-                        ItemHold.IgnoreFixedPosition = false;
-                    }
+                    ItemHold.IsFixedPosition = false;
+                    ItemHold.FixedX = 0;
+                    ItemHold.FixedY = 0;
                 }
+            }
+            else if (ItemHold.IgnoreFixedPosition)
+            {
+                ItemHold.IgnoreFixedPosition = false;
             }
         }
 
@@ -297,8 +269,7 @@ namespace ClassicUO.Game
                     {
                         ushort hue = 0;
 
-                        Array.Clear(_componentsList, 0, 10);
-
+                        _componentsList.Clear();
                         if (
                             !_world.CustomHouseManager.CanBuildHere(
                                 _componentsList,
@@ -314,15 +285,9 @@ namespace ClassicUO.Game
                             _temp.ForEach(s => s.Destroy());
                             _temp.Clear();
 
-                            for (int i = 0; i < _componentsList.Length; i++)
+                            for (int i = 0; i < _componentsList.Count; i++)
                             {
-                                if (_componentsList[i].Graphic == 0)
-                                {
-                                    break;
-                                }
-
                                 Multi m = Multi.Create(_world, _componentsList[i].Graphic);
-
                                 m.AlphaHue = 0xFF;
                                 m.Hue = hue;
                                 m.State = CUSTOM_HOUSE_MULTI_OBJECT_FLAGS.CHMOF_PREVIEW;
@@ -330,7 +295,7 @@ namespace ClassicUO.Game
                             }
                         }
 
-                        if (_componentsList.Length != 0)
+                        if (_componentsList.Count != 0)
                         {
                             if (SelectedObject.Object is GameObject selectedObj)
                             {
@@ -339,9 +304,9 @@ namespace ClassicUO.Game
                                 if (selectedObj.Z < _world.CustomHouseManager.MinHouseZ)
                                 {
                                     if (
-                                        selectedObj.X >= _world.CustomHouseManager.StartPos.X
+                                        selectedObj.X >= _world.CustomHouseManager.StartPos.X - 1
                                         && selectedObj.X <= _world.CustomHouseManager.EndPos.X - 1
-                                        && selectedObj.Y >= _world.CustomHouseManager.StartPos.Y
+                                        && selectedObj.Y >= _world.CustomHouseManager.StartPos.Y - 1
                                         && selectedObj.Y <= _world.CustomHouseManager.EndPos.Y - 1
                                     )
                                     {
@@ -352,19 +317,14 @@ namespace ClassicUO.Game
                                     }
                                 }
 
-                                for (int i = 0; i < _componentsList.Length; i++)
+                                for (int i = 0; i < _componentsList.Count; i++)
                                 {
-                                    ref readonly CustomBuildObject item = ref _componentsList[i];
-
-                                    if (item.Graphic == 0)
-                                    {
-                                        break;
-                                    }
+                                    var item = _componentsList[i];
 
                                     _temp[i].SetInWorldTile(
                                         (ushort)(selectedObj.X + item.X),
                                         (ushort)(selectedObj.Y + item.Y),
-                                        (sbyte)(selectedObj.Z + z + item.Z)
+                                        (sbyte)(_world.Player.Z + item.Z)
                                     );
                                 }
                             }
@@ -467,7 +427,7 @@ namespace ClassicUO.Game
 
                 ushort draggingGraphic = GetDraggingItemGraphic();
 
-                ref readonly var artInfo = ref Client.Game.UO.Arts.GetArt(draggingGraphic);
+                ref readonly var artInfo = ref (ItemHold.IsGumpTexture ? ref Client.Game.UO.Gumps.GetGump(draggingGraphic) : ref Client.Game.UO.Arts.GetArt(draggingGraphic));
 
                 if (artInfo.Texture != null)
                 {
