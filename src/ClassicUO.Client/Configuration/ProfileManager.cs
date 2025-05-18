@@ -38,11 +38,18 @@ namespace ClassicUO.Configuration
             string fileToLoad = Path.Combine(path, "profile.json");
 
             ProfilePath = path;
+            bool profileExisted = File.Exists(fileToLoad);
             CurrentProfile = ConfigurationResolver.Load<Profile>(fileToLoad, ProfileJsonContext.DefaultToUse.Profile) ?? NewFromDefault();
 
             CurrentProfile.Username = username;
             CurrentProfile.ServerName = servername;
             CurrentProfile.CharacterName = charactername;
+
+            // Save the profile if it didn't exist before
+            if (!profileExisted)
+            {
+                CurrentProfile.SaveAs(path, "profile.json");
+            }
 
             ValidateFields(CurrentProfile);
         }

@@ -340,7 +340,6 @@ namespace ClassicUO.Game.Managers
                 _currentMusic[i]?.Update();
             }
 
-
             LinkedListNode<UOSound> first = _currentSounds.First;
 
             while (first != null)

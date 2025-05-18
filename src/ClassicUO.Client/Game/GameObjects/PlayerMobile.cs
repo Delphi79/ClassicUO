@@ -284,6 +284,8 @@ namespace ClassicUO.Game.GameObjects
 
         public void TryOpenCorpses()
         {
+            if (ProfileManager.CurrentProfile == null)
+                return;
             if (ProfileManager.CurrentProfile.AutoOpenCorpses)
             {
                 if ((ProfileManager.CurrentProfile.CorpseOpenOptions == 1 || ProfileManager.CurrentProfile.CorpseOpenOptions == 3) && World.TargetManager.IsTargeting)
@@ -316,6 +318,8 @@ namespace ClassicUO.Game.GameObjects
 
         private void TryOpenDoors()
         {
+            if (ProfileManager.CurrentProfile == null)
+                return;
             if (!World.Player.IsDead && ProfileManager.CurrentProfile.AutoOpenDoors)
             {
                 int x = X, y = Y, z = Z;

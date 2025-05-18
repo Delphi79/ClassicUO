@@ -264,3 +264,30 @@ paket.lock
 __pycache__/
 *.pyc
 /.svn
+
+# Ignore user and sensitive config
+settings.json
+
+# Ignore build output
+bin/
+obj/
+publish/
+
+# Ignore IDE and user files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.db
+*.log
+*.cache
+*.vs/
+
+# Ignore compiled binaries
+*.exe
+*.dll
+*.pdb
+
+# Ignore OS files
+.DS_Store
+Thumbs.db

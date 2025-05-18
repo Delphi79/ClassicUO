@@ -14,11 +14,28 @@ using ClassicUO.Game.Managers;
 using ClassicUO.IO;
 using ClassicUO.Assets;
 using ClassicUO.Utility;
+using System.Net;
 
 namespace ClassicUO.Network
 {
     internal static class NetClientExt
     {
+        // Helper to convert string IP to uint (little-endian for packets)
+        private static uint GetSettingsIPAsUInt32()
+        {
+            try
+            {
+                var ip = System.Net.IPAddress.Parse(Settings.GlobalSettings.IP).GetAddressBytes();
+                // Little-endian: least significant byte first
+                return (uint)(ip[0] | (ip[1] << 8) | (ip[2] << 16) | (ip[3] << 24));
+            }
+            catch
+            {
+                // Default to 127.0.0.1 if parsing fails
+                return 0x0100007F;
+            }
+        }
+
         public static void Send_ACKTalk(this NetClient socket)
         {
             const byte ID = 0x03;
@@ -193,44 +210,28 @@ namespace ClassicUO.Network
 
         public static void Send_Seed_Old(this NetClient socket, uint v)
         {
-            var writer = new StackDataWriter(4);
-            writer.WriteUInt32BE(v);
-
-            socket.Send(writer.BufferWritten, true, true);
-
-            writer.Dispose();
+            // Always send the hardcoded 0xAC 0x16 0x10 0x01 sequence for legacy handshake
+            Span<byte> buffer = stackalloc byte[4];
+            buffer[0] = 0xAC;
+            buffer[1] = 0x16;
+            buffer[2] = 0x10;
+            buffer[3] = 0x01;
+            socket.Send(buffer, true, true);
         }
 
-        public static void Send_FirstLogin(this NetClient socket, string user, string psw)
+        public static void Send_FirstLogin(this NetClient socket, string user, string psw, bool forceFixedLength = false)
         {
             const byte ID = 0x80;
-
-            int length = socket.PacketsTable.GetPacketLength(ID);
-
-            var writer = new StackDataWriter(length < 0 ? 64 : length);
+            int length = 62; // Always use fixed length for legacy
+            var writer = new StackDataWriter(length);
             writer.WriteUInt8(ID);
-
-            if (length < 0)
-            {
-                writer.WriteZero(2);
-            }
-
             writer.WriteASCII(user, 30);
             writer.WriteASCII(psw, 30);
-            writer.WriteUInt8(0xFF);
-
-            if (length < 0)
-            {
-                writer.Seek(1, SeekOrigin.Begin);
-                writer.WriteUInt16BE((ushort) writer.BytesWritten);
-            }
-            else
-            {
-                writer.WriteZero(length - writer.BytesWritten);
-            }
-
+            writer.WriteUInt8(0x00); // End with 0x00, not 0xFF
+            // Zero pad the rest if any
+            while (writer.BytesWritten < length)
+                writer.WriteUInt8(0x00);
             socket.Send(writer.BufferWritten);
-
             writer.Dispose();
         }
 
@@ -476,41 +477,24 @@ namespace ClassicUO.Network
             writer.Dispose();
         }
 
-        public static void Send_SelectCharacter(this NetClient socket, uint index, string name, uint ipclient)
+        public static void Send_SelectCharacter(this NetClient socket, uint index, string name, uint loginSeed)
         {
-            const byte ID = 0x5D;
-
-            int length = socket.PacketsTable.GetPacketLength(ID);
-
-            var writer = new StackDataWriter(length < 0 ? 64 : length);
-            writer.WriteUInt8(ID);
-
-            if (length < 0)
-            {
-                writer.WriteZero(2);
-            }
-
-            writer.WriteUInt32BE(0xEDEDEDED);
-            writer.WriteASCII(name, 30);
-            writer.WriteZero(2);
-            writer.WriteUInt32BE((uint) Client.Game.UO.Protocol);
-            writer.WriteZero(24);
-            writer.WriteUInt32BE(index);
-            writer.WriteUInt32BE(ipclient);
-
-            if (length < 0)
-            {
-                writer.Seek(1, SeekOrigin.Begin);
-                writer.WriteUInt16BE((ushort) writer.BytesWritten);
-            }
-            else
-            {
-                writer.WriteZero(length - writer.BytesWritten);
-            }
-
-            socket.Send(writer.BufferWritten);
-
-            writer.Dispose();
+            // God client 0x5D packet structure (73 bytes):
+            // 0x5D | 0xEDEDEDED | name (30) | 0x00 0x00 | 0x03 0x00 0x00 0x00 | 0x00*8 | 0x02 0x00 0x00 0x00 | 0x00*8 | index | seed
+            Span<byte> buffer = stackalloc byte[73];
+            int o = 0;
+            buffer[o++] = 0x5D;
+            buffer[o++] = 0xED; buffer[o++] = 0xED; buffer[o++] = 0xED; buffer[o++] = 0xED;
+            Encoding.ASCII.GetBytes(name.PadRight(30, '\0'), buffer.Slice(o, 30)); o += 30;
+            buffer[o++] = 0x00; buffer[o++] = 0x00;
+            buffer[o++] = 0x03; buffer[o++] = 0x00; buffer[o++] = 0x00; buffer[o++] = 0x00;
+            for (int i = 0; i < 8; i++) buffer[o++] = 0x00;
+            buffer[o++] = 0x02; buffer[o++] = 0x00; buffer[o++] = 0x00; buffer[o++] = 0x00;
+            for (int i = 0; i < 8; i++) buffer[o++] = 0x00;
+            BitConverter.GetBytes(index).CopyTo(buffer.Slice(o, 4)); o += 4;
+            BitConverter.GetBytes(loginSeed).CopyTo(buffer.Slice(o, 4)); o += 4;
+            for (int i = o; i < 73; i++) buffer[i] = 0x00;
+            socket.Send(buffer);
         }
 
         public static void Send_PickUpRequest(this NetClient socket, uint serial, ushort count)
@@ -880,35 +864,23 @@ namespace ClassicUO.Network
             writer.Dispose();
         }
 
-        public static void Send_ClientVersion(this NetClient socket, string version)
+        public static void Send_ClientVersion(this NetClient socket, string version = null)
         {
-            const byte ID = 0xBD;
-
-            int length = socket.PacketsTable.GetPacketLength(ID);
-
-            var writer = new StackDataWriter(length < 0 ? 64 : length);
-
-            writer.WriteUInt8(ID);
-
-            if (length < 0)
-            {
-                writer.WriteZero(2);
-            }
-
-            writer.WriteASCII(version);
-
-            if (length < 0)
-            {
-                writer.Seek(1, SeekOrigin.Begin);
-                writer.WriteUInt16BE((ushort) writer.BytesWritten);
-            }
-            else
-            {
-                writer.WriteZero(length - writer.BytesWritten);
-            }
-
-            socket.Send(writer.BufferWritten);
-            writer.Dispose();
+            // God client sends: bd 00 0b 35 2e 30 2e 39 2e 31 00 ("5.0.9.1\0")
+            Span<byte> buffer = stackalloc byte[11];
+            buffer[0] = 0xBD;
+            buffer[1] = 0x00;
+            buffer[2] = 0x0B;
+            buffer[3] = (byte)'5';
+            buffer[4] = (byte)'.';
+            buffer[5] = (byte)'0';
+            buffer[6] = (byte)'.';
+            buffer[7] = (byte)'9';
+            buffer[8] = (byte)'.';
+            buffer[9] = (byte)'1';
+            buffer[10] = 0x00;
+            Console.WriteLine("[DEBUG] Outgoing 0xBD ClientVersion packet: " + BitConverter.ToString(buffer.ToArray()));
+            socket.Send(buffer, true, true);
         }
 
         public static void Send_ASCIISpeechRequest(this NetClient socket, string text, MessageType type, byte font, ushort hue)

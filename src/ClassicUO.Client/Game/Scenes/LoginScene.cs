@@ -48,6 +48,10 @@ namespace ClassicUO.Game.Scenes
         private int _reconnectTryCounter = 1;
         private bool _autoLogin;
         private readonly World _world;
+        private bool _handshakeComplete = false;
+        private long _handshakeTimeout = 0;
+        private bool _waitingForHandshake = false;
+        private uint _loginSeed = 0x00161001; // Default to OEM hardcoded seed
 
         public LoginScene(World world) => _world = world;
 
@@ -160,16 +164,28 @@ namespace ClassicUO.Game.Scenes
                 }
             }
 
-            if ((CurrentLoginStep == LoginSteps.CharacterCreation || CurrentLoginStep == LoginSteps.CharacterSelection) && Time.Ticks > _pingTime)
+            // Only send ping if we are in the game world, not during login/character select
+            if (CurrentLoginStep == LoginSteps.CharacterCreation || CurrentLoginStep == LoginSteps.CharacterSelection)
             {
-                // Note that this will not be an ICMP ping, so it's better that this *not* be affected by -no_server_ping.
+                // Disabled: Do not send ping (0x73) during login/character select
+                // if (NetClient.Socket.IsConnected)
+                // {
+                //     NetClient.Socket.Statistics.SendPing();
+                // }
+                // _pingTime = Time.Ticks + 60000;
+            }
 
-                if (NetClient.Socket.IsConnected)
-                {
-                    NetClient.Socket.Statistics.SendPing();
-                }
-
-                _pingTime = Time.Ticks + 60000;
+            // Handshake timeout logic (non-blocking)
+            if (_waitingForHandshake && !_handshakeComplete && Time.Ticks > _handshakeTimeout)
+            {
+                _waitingForHandshake = false;
+                Log.Error("Legacy handshake failed. Stopping further attempts.");
+                PopupMessage = "Failed to handshake with server. Please check your server type and settings.";
+                CurrentLoginStep = LoginSteps.PopUpMessage;
+            }
+            if (_handshakeComplete)
+            {
+                _waitingForHandshake = false;
             }
         }
 
@@ -381,15 +397,27 @@ namespace ClassicUO.Game.Scenes
             }
         }
 
+        // Helper to convert string IP to uint (little-endian for packets)
+        private static uint GetSettingsIPAsUInt32()
+        {
+            try
+            {
+                var ip = System.Net.IPAddress.Parse(Settings.GlobalSettings.IP).GetAddressBytes();
+                // Little-endian: least significant byte first
+                return (uint)(ip[0] | (ip[1] << 8) | (ip[2] << 16) | (ip[3] << 24));
+            }
+            catch
+            {
+                // Default to 127.0.0.1 if parsing fails
+                return 0x0100007F;
+            }
+        }
+
         public void SelectCharacter(uint index)
         {
-            if (CurrentLoginStep == LoginSteps.CharacterSelection)
-            {
-                LastCharacterManager.Save(Account, _world.ServerName, Characters[index]);
-
-                CurrentLoginStep = LoginSteps.EnteringBritania;
-                NetClient.Socket.Send_SelectCharacter(index, Characters[index], NetClient.Socket.LocalIP);
-            }
+            LastCharacterManager.Save(Account, _world.ServerName, Characters[index]);
+            // Use the login seed for the last 4 bytes of the 0x5D packet
+            NetClient.Socket.Send_SelectCharacter(index, Characters[index], _loginSeed);
         }
 
         public void StartCharCreation()
@@ -416,7 +444,7 @@ namespace ClassicUO.Game.Scenes
 
             NetClient.Socket.Send_CreateCharacter(character,
                                                   cityIndex,
-                                                  NetClient.Socket.LocalIP,
+                                                  GetSettingsIPAsUInt32(),
                                                   ServerIndex,
                                                   (uint)i,
                                                   profession);
@@ -428,11 +456,11 @@ namespace ClassicUO.Game.Scenes
         {
             if (CurrentLoginStep == LoginSteps.CharacterSelection)
             {
-                NetClient.Socket.Send_DeleteCharacter((byte)index, NetClient.Socket.LocalIP);
+                NetClient.Socket.Send_DeleteCharacter((byte)index, GetSettingsIPAsUInt32());
             }
         }
 
-        public void StepBack()
+        public void StepBack(bool forceDisconnect = false)
         {
             PopupMessage = null;
 
@@ -449,7 +477,6 @@ namespace ClassicUO.Game.Scenes
                     DisposeAllServerEntries();
                     CurrentLoginStep = LoginSteps.Main;
                     NetClient.Socket.Disconnect();
-
                     break;
 
                 case LoginSteps.LoginInToServer:
@@ -457,21 +484,28 @@ namespace ClassicUO.Game.Scenes
                     Characters = null;
                     DisposeAllServerEntries();
                     Connect(Account, Password);
-
                     break;
 
                 case LoginSteps.CharacterCreation:
                     CurrentLoginStep = LoginSteps.CharacterSelection;
-
                     break;
 
                 case LoginSteps.PopUpMessage:
-                case LoginSteps.CharacterSelection:
                     NetClient.Socket.Disconnect();
                     Characters = null;
                     DisposeAllServerEntries();
                     CurrentLoginStep = LoginSteps.Main;
+                    break;
 
+                case LoginSteps.CharacterSelection:
+                    if (forceDisconnect) // Only disconnect if explicitly requested
+                    {
+                        NetClient.Socket.Disconnect();
+                        Characters = null;
+                        DisposeAllServerEntries();
+                        CurrentLoginStep = LoginSteps.Main;
+                    }
+                    // Otherwise, do nothing (wait at character select)
                     break;
             }
         }
@@ -495,24 +529,24 @@ namespace ClassicUO.Game.Scenes
 
             NetClient.Socket.Encryption?.Initialize(true, address);
 
-            if (Client.Game.UO.Version >= ClientVersion.CV_6040)
-            {
-                uint clientVersion = (uint) Client.Game.UO.Version;
+            // Auto-detect handshake type and branch accordingly
+            PerformHandshakeAutoDetect(address);
+        }
 
-                byte major = (byte) (clientVersion >> 24);
-                byte minor = (byte) (clientVersion >> 16);
-                byte build = (byte) (clientVersion >> 8);
-                byte extra = (byte) clientVersion;
+        private void PerformHandshakeAutoDetect(uint address)
+        {
+            Log.Info("Using pure legacy handshake (0xAC + 0x80) only, with hardcoded seed 0x161001.");
+            _loginSeed = 0x00161001; // Store the seed for later use
+            NetClient.Socket.Send_Seed_Old(_loginSeed);
+            NetClient.Socket.Flush();
+            Log.Info($"Flushed after 0xAC seed packet (seed=0x{_loginSeed:X8}).");
+            NetClient.Socket.Send_FirstLogin(Account, Password, true);
+            NetClient.Socket.Flush();
+            Log.Info("Flushed after 0x80 account info packet.");
 
-
-                NetClient.Socket.Send_Seed(address, major, minor, build, extra);
-            }
-            else
-            {
-                NetClient.Socket.Send_Seed_Old(address);
-            }
-
-            NetClient.Socket.Send_FirstLogin(Account, Password);
+            // Start handshake timeout logic (non-blocking)
+            _waitingForHandshake = true;
+            _handshakeTimeout = Time.Ticks + 3000; // 3 seconds from now
         }
 
         private void OnNetClientDisconnected(object sender, SocketError e)
@@ -598,37 +632,29 @@ namespace ClassicUO.Game.Scenes
         {
             ParseCharacterList(ref p);
             ParseCities(ref p);
-
             _world.ClientFeatures.SetFlags((CharacterListFlags) p.ReadUInt32BE());
             CurrentLoginStep = LoginSteps.CharacterSelection;
-
+            _handshakeComplete = true;
             uint charToSelect = 0;
-
             bool haveAnyCharacter = false;
             bool canLogin = CanAutologin;
-
             if (_autoLogin)
             {
                 _autoLogin = false;
             }
-
             string lastCharName = LastCharacterManager.GetLastCharacter(Account, _world.ServerName);
-
             for (byte i = 0; i < Characters.Length; i++)
             {
                 if (Characters[i].Length > 0)
                 {
                     haveAnyCharacter = true;
-
                     if (Characters[i] == lastCharName)
                     {
                         charToSelect = i;
-
                         break;
                     }
                 }
             }
-
             if (canLogin && haveAnyCharacter)
             {
                 SelectCharacter(charToSelect);
@@ -697,11 +723,9 @@ namespace ClassicUO.Game.Scenes
         {
             int count = p.ReadUInt8();
             Characters = new string[count];
-
             for (ushort i = 0; i < count; i++)
             {
                 Characters[i] = p.ReadASCII(30).TrimEnd('\0');
-
                 p.Skip(30);
             }
         }

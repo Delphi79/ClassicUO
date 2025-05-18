@@ -929,7 +929,7 @@ namespace ClassicUO.Network
                 NetClient.Socket.Send_Language(Settings.GlobalSettings.Language);
             }
 
-            NetClient.Socket.Send_ClientVersion(Settings.GlobalSettings.ClientVersion);
+            NetClient.Socket.Send_ClientVersion();
 
             GameActions.SingleClick(world, world.Player);
             NetClient.Socket.Send_SkillsRequest(world.Player.Serial);
@@ -2178,15 +2178,11 @@ namespace ClassicUO.Network
 
             world.Light.RealOverall = level;
 
-            if (
-                !ProfileManager.CurrentProfile.UseCustomLightLevel
-                || ProfileManager.CurrentProfile.LightLevelType == 1
-            )
+            if (!ProfileManager.CurrentProfile.UseCustomLightLevel || ProfileManager.CurrentProfile.LightLevelType == 1)
             {
-                world.Light.Overall =
-                    ProfileManager.CurrentProfile.LightLevelType == 1
-                        ? Math.Min(level, ProfileManager.CurrentProfile.LightLevel)
-                        : level;
+                world.Light.Overall = ProfileManager.CurrentProfile.LightLevelType == 1
+                    ? Math.Min(level, ProfileManager.CurrentProfile.LightLevel)
+                    : level;
             }
         }
 
@@ -4020,6 +4016,9 @@ namespace ClassicUO.Network
                 flags = (LockedFeatureFlags)p.ReadUInt16BE();
             }
 
+            // DEBUG: Log the received feature flags for GM enablement troubleshooting
+            Console.WriteLine($"[EnableLockedFeatures] Flags received: 0x{((uint)flags):X8}");
+
             world.ClientLockedFeatures.SetFlags(flags);
 
             world.ChatManager.ChatIsEnabled = world.ClientLockedFeatures.Flags.HasFlag(
@@ -4113,7 +4112,7 @@ namespace ClassicUO.Network
 
         private static void ClientVersion(World world, ref StackDataReader p)
         {
-            NetClient.Socket.Send_ClientVersion(Settings.GlobalSettings.ClientVersion);
+            NetClient.Socket.Send_ClientVersion();
         }
 
         private static void AssistVersion(World world, ref StackDataReader p)
@@ -5987,7 +5986,6 @@ namespace ClassicUO.Network
             }
 
             LoginScene scene = Client.Game.GetScene<LoginScene>();
-
             if (scene != null)
             {
                 scene.ReceiveCharacterList(ref p);

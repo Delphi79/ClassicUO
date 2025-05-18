@@ -71,12 +71,10 @@ namespace ClassicUO.Game.Managers
                 return;
             }
 
-            Profile currentProfile = ProfileManager.CurrentProfile;
-
-            if (currentProfile != null && currentProfile.OverrideAllFonts)
+            if (ProfileManager.CurrentProfile.OverrideAllFonts)
             {
-                font = currentProfile.ChatFont;
-                unicode = currentProfile.OverrideAllFontsIsUnicode;
+                font = ProfileManager.CurrentProfile.ChatFont;
+                unicode = ProfileManager.CurrentProfile.OverrideAllFontsIsUnicode;
             }
 
             switch (type)
@@ -85,7 +83,7 @@ namespace ClassicUO.Game.Managers
                 case MessageType.Encoded:
                 case MessageType.System:
                 case MessageType.Party:
-                    if (!currentProfile.OverheadPartyMessages)
+                    if (!ProfileManager.CurrentProfile.OverheadPartyMessages)
                         break;
 
                     if (parent == null) //No parent entity, need to check party members by name
@@ -119,11 +117,11 @@ namespace ClassicUO.Game.Managers
                     break;
 
                 case MessageType.Guild:
-                    if (currentProfile.IgnoreGuildMessages) return;
+                    if (ProfileManager.CurrentProfile.IgnoreGuildMessages) return;
                     break;
 
                 case MessageType.Alliance:
-                    if (currentProfile.IgnoreAllianceMessages) return;
+                    if (ProfileManager.CurrentProfile.IgnoreAllianceMessages) return;
                     break;
 
                 case MessageType.Spell:
@@ -131,9 +129,9 @@ namespace ClassicUO.Game.Managers
                     //server hue color per default
                     if (!string.IsNullOrEmpty(text) && SpellDefinition.WordToTargettype.TryGetValue(text, out SpellDefinition spell))
                     {
-                        if (currentProfile != null && currentProfile.EnabledSpellFormat && !string.IsNullOrWhiteSpace(currentProfile.SpellDisplayFormat))
+                        if (ProfileManager.CurrentProfile != null && ProfileManager.CurrentProfile.EnabledSpellFormat && !string.IsNullOrWhiteSpace(ProfileManager.CurrentProfile.SpellDisplayFormat))
                         {
-                            ValueStringBuilder sb = new ValueStringBuilder(currentProfile.SpellDisplayFormat.AsSpan());
+                            ValueStringBuilder sb = new ValueStringBuilder(ProfileManager.CurrentProfile.SpellDisplayFormat.AsSpan());
                             {
                                 sb.Replace("{power}".AsSpan(), spell.PowerWords.AsSpan());
                                 sb.Replace("{spell}".AsSpan(), spell.Name.AsSpan());
@@ -144,19 +142,19 @@ namespace ClassicUO.Game.Managers
                         }
 
                         //server hue color per default if not enabled
-                        if (currentProfile != null && currentProfile.EnabledSpellHue)
+                        if (ProfileManager.CurrentProfile != null && ProfileManager.CurrentProfile.EnabledSpellHue)
                         {
                             if (spell.TargetType == TargetType.Beneficial)
                             {
-                                hue = currentProfile.BeneficHue;
+                                hue = ProfileManager.CurrentProfile.BeneficHue;
                             }
                             else if (spell.TargetType == TargetType.Harmful)
                             {
-                                hue = currentProfile.HarmfulHue;
+                                hue = ProfileManager.CurrentProfile.HarmfulHue;
                             }
                             else
                             {
-                                hue = currentProfile.NeutralHue;
+                                hue = ProfileManager.CurrentProfile.NeutralHue;
                             }
                         }
                     }
@@ -357,18 +355,16 @@ namespace ClassicUO.Game.Managers
 
         private static long CalculateTimeToLive(RenderedText rtext)
         {
-            Profile currentProfile = ProfileManager.CurrentProfile;
-
-            if (currentProfile == null)
+            if (ProfileManager.CurrentProfile == null)
             {
                 return 0;
             }
 
             long timeToLive;
 
-            if (currentProfile.ScaleSpeechDelay)
+            if (ProfileManager.CurrentProfile.ScaleSpeechDelay)
             {
-                int delay = currentProfile.SpeechDelay;
+                int delay = ProfileManager.CurrentProfile.SpeechDelay;
 
                 if (delay < 10)
                 {
@@ -379,7 +375,7 @@ namespace ClassicUO.Game.Managers
             }
             else
             {
-                long delay = (5497558140000 * currentProfile.SpeechDelay) >> 32 >> 5;
+                long delay = (5497558140000 * ProfileManager.CurrentProfile.SpeechDelay) >> 32 >> 5;
 
                 timeToLive = (delay >> 31) + delay;
             }
