@@ -183,6 +183,7 @@ namespace ClassicUO.Game.UI.Gumps
             _flipMap = ProfileManager.CurrentProfile.WorldMapFlipMap;
             _showPartyMembers = ProfileManager.CurrentProfile.WorldMapShowParty;
 
+            // Disabled for legacy-only server: do not send party/guild queries
             World.WMapManager.SetEnable(_showPartyMembers);
 
             _zoomIndex = ProfileManager.CurrentProfile.WorldMapZoomIndex;
@@ -298,6 +299,7 @@ namespace ClassicUO.Game.UI.Gumps
                 {
                     _showPartyMembers = !_showPartyMembers;
 
+                    // Disabled for legacy-only server: do not send party/guild queries
                     World.WMapManager.SetEnable(_showPartyMembers);
                     SaveSettings();
                 },
@@ -537,7 +539,8 @@ namespace ClassicUO.Game.UI.Gumps
             if (_map.Index != World.MapIndex && !_freeView)
                 ChangeMap(World.MapIndex);
 
-            World.WMapManager.RequestServerPartyGuildInfo();
+            // Disabled for legacy-only server: do not send party/guild queries
+            // World.WMapManager.RequestServerPartyGuildInfo();
         }
 
         public void ChangeMap(int index)
