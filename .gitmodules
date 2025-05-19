@@ -1,0 +1,35 @@
+[submodule "external/FNA"]
+	path = external/FNA
+	url = https://github.com/FNA-XNA/FNA.git
+
+[submodule "external/MP3Sharp"]
+	path = external/MP3Sharp
+	url = https://github.com/andreakarasho/MP3Sharp.git
+
+[submodule "external/FileEmbed"]
+	path = external/FileEmbed
+	url = https://github.com/SirCxyrtyx/FileEmbed.git
+
+[submodule "external/FNA/lib/SDL2-CS"]
+	path = external/FNA/lib/SDL2-CS
+	url = https://github.com/flibitijibibo/SDL2-CS
+
+[submodule "external/FNA/lib/FAudio"]
+	path = external/FNA/lib/FAudio
+	url = https://github.com/FNA-XNA/FAudio
+
+[submodule "external/FNA/lib/FNA3D"]
+	path = external/FNA/lib/FNA3D
+	url = https://github.com/FNA-XNA/FNA3D
+
+[submodule "external/FNA/lib/Theorafile"]
+	path = external/FNA/lib/Theorafile
+	url = https://github.com/FNA-XNA/Theorafile
+
+[submodule "external/FNA/lib/FNA3D/MojoShader"]
+	path = external/FNA/lib/FNA3D/MojoShader
+	url = https://github.com/icculus/mojoshader
+
+[submodule "external/FNA/lib/FNA3D/Vulkan-Headers"]
+	path = external/FNA/lib/FNA3D/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers
