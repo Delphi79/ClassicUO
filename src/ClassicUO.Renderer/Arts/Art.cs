@@ -1,9 +1,10 @@
-using System;
 using ClassicUO.Assets;
 using ClassicUO.Utility;
+using ClassicUO.Utility.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using SDL2;
+using SDL3;
+using System;
 
 namespace ClassicUO.Renderer.Arts
 {
@@ -41,43 +42,52 @@ namespace ClassicUO.Renderer.Arts
             if (spriteInfo.Texture == null)
             {
                 var artInfo = _artLoader.GetArt(idx);
-                if (!artInfo.Pixels.IsEmpty)
+
+                if (artInfo.Pixels.IsEmpty && idx > 0)
                 {
-                    spriteInfo.Texture = _atlas.AddSprite(
-                        artInfo.Pixels,
-                        artInfo.Width,
-                        artInfo.Height,
-                        out spriteInfo.UV
+                    // Trying to load a texture that does not exist in the client MULs
+                    // Degrading gracefully and only crash if not even the fallback ItemID exists
+                    Log.Error(
+                        $"Texture not found for sprite: idx: {idx}; itemid: {(idx > 0x4000 ? idx - 0x4000 : '-')}"
                     );
+                    return ref Get(0); // ItemID of "UNUSED" placeholder
+                }
 
-                    if (idx > 0x4000)
+                spriteInfo.Texture = _atlas.AddSprite(
+                    artInfo.Pixels,
+                    artInfo.Width,
+                    artInfo.Height,
+                    out spriteInfo.UV
+                );
+
+                if (idx > 0x4000)
+                {
+                    idx -= 0x4000;
+                    _picker.Set(idx, artInfo.Width, artInfo.Height, artInfo.Pixels);
+
+                    var pos1 = 0;
+                    int minX = artInfo.Width,
+                        minY = artInfo.Height,
+                        maxX = 0,
+                        maxY = 0;
+
+                    for (int y = 0; y < artInfo.Height; ++y)
                     {
-                        idx -= 0x4000;
-                        _picker.Set(idx, artInfo.Width, artInfo.Height, artInfo.Pixels);
-
-                        var pos1 = 0;
-                        int minX = artInfo.Width,
-                            minY = artInfo.Height,
-                            maxX = 0,
-                            maxY = 0;
-
-                        for (int y = 0; y < artInfo.Height; ++y)
+                        for (int x = 0; x < artInfo.Width; ++x)
                         {
-                            for (int x = 0; x < artInfo.Width; ++x)
+                            if (artInfo.Pixels[pos1++] != 0)
                             {
-                                if (artInfo.Pixels[pos1++] != 0)
-                                {
-                                    minX = Math.Min(minX, x);
-                                    maxX = Math.Max(maxX, x);
-                                    minY = Math.Min(minY, y);
-                                    maxY = Math.Max(maxY, y);
-                                }
+                                minX = Math.Min(minX, x);
+                                maxX = Math.Max(maxX, x);
+                                minY = Math.Min(minY, y);
+                                maxY = Math.Max(maxY, y);
                             }
                         }
-
-                        _realArtBounds[idx] = new Rectangle(minX, minY, maxX - minX, maxY - minY);
                     }
+
+                    _realArtBounds[idx] = new Rectangle(minX, minY, maxX - minX, maxY - minY);
                 }
+                
             }
 
             return ref spriteInfo;
@@ -87,7 +97,8 @@ namespace ClassicUO.Renderer.Arts
             int index,
             ushort customHue,
             out int hotX,
-            out int hotY
+            out int hotY,
+            float dpiScale
         )
         {
             hotX = hotY = 0;
@@ -102,20 +113,36 @@ namespace ClassicUO.Renderer.Arts
             fixed (uint* ptr = artInfo.Pixels)
             {
                 SDL.SDL_Surface* surface = (SDL.SDL_Surface*)
-                    SDL.SDL_CreateRGBSurfaceWithFormatFrom(
-                        (IntPtr)ptr,
+                    SDL.SDL_CreateSurfaceFrom(
                         artInfo.Width,
                         artInfo.Height,
-                        32,
-                        4 * artInfo.Width,
-                        SDL.SDL_PIXELFORMAT_ABGR8888
-                    );
+                        SDL.SDL_PixelFormat.SDL_PIXELFORMAT_ABGR8888,
+                        (IntPtr)ptr,
+                        4 * artInfo.Width);
+
+                int width = artInfo.Width;
+                int height = artInfo.Height;
+
+                if (dpiScale != 1f)
+                {
+                    width = (int)(artInfo.Width * dpiScale);
+                    height = (int)(artInfo.Height * dpiScale);
+
+                    SDL.SDL_Surface* newSurface = (SDL.SDL_Surface*)SDL.SDL_ScaleSurface(
+                        (nint)surface,
+                        width,
+                        height,
+                        SDL.SDL_ScaleMode.SDL_SCALEMODE_NEAREST);
+
+                    SDL.SDL_DestroySurface((nint)surface);
+                    surface = newSurface;
+                }
 
                 int stride = surface->pitch >> 2;
                 uint* pixels_ptr = (uint*)surface->pixels;
-                uint* p_line_end = pixels_ptr + artInfo.Width;
-                uint* p_img_end = pixels_ptr + stride * artInfo.Height;
-                int delta = stride - artInfo.Width;
+                uint* p_line_end = pixels_ptr + width;
+                uint* p_img_end = pixels_ptr + stride * height;
+                int delta = stride - width;
                 short curX = 0;
                 short curY = 0;
                 Color c = default;
@@ -128,7 +155,7 @@ namespace ClassicUO.Renderer.Arts
                     {
                         if (*pixels_ptr != 0 && *pixels_ptr != 0xFF_00_00_00)
                         {
-                            if (curX >= artInfo.Width - 1 || curY >= artInfo.Height - 1)
+                            if (curX >= width - 1 || curY >= height - 1)
                             {
                                 *pixels_ptr = 0;
                             }

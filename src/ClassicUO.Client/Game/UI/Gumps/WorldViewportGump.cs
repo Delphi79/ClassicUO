@@ -5,7 +5,6 @@ using ClassicUO.Game.Managers;
 using ClassicUO.Game.Scenes;
 using ClassicUO.Game.UI.Controls;
 using ClassicUO.Input;
-using ClassicUO.Assets;
 using ClassicUO.Network;
 using ClassicUO.Renderer;
 using ClassicUO.Resources;
@@ -54,7 +53,8 @@ namespace ClassicUO.Game.UI.Gumps
             {
                 if (!ProfileManager.CurrentProfile.GameWindowLock)
                 {
-                    Point n = ResizeGameWindow(_lastSize);
+                    var s = new Point(Client.Game.ScaleWithDpi(_lastSize.X), Client.Game.ScaleWithDpi(_lastSize.Y));
+                    Point n = ResizeGameWindow(s);
 
                     UIManager.GetGump<OptionsGump>()?.UpdateVideo();
 
@@ -112,14 +112,17 @@ namespace ClassicUO.Game.UI.Gumps
                     int w = _lastSize.X + offset.X;
                     int h = _lastSize.Y + offset.Y;
 
-                    if (w < 640)
+                    int targetWidth = 640;
+                    int targetHeight = 480;
+
+                    if (w < targetWidth)
                     {
-                        w = 640;
+                        w = targetWidth;
                     }
 
-                    if (h < 480)
+                    if (h < targetHeight)
                     {
-                        h = 480;
+                        h = targetHeight;
                     }
 
                     if (w > Client.Game.Window.ClientBounds.Width - BORDER_WIDTH)
@@ -229,14 +232,18 @@ namespace ClassicUO.Game.UI.Gumps
 
         public Point ResizeGameWindow(Point newSize)
         {
-            if (newSize.X < 640)
+            newSize.X = (int)(newSize.X / Client.Game.DpiScale);
+            newSize.Y = (int)(newSize.Y / Client.Game.DpiScale);
+            int targetWidth = 640;
+            int targetHeight = 480;
+            if (newSize.X < targetWidth)
             {
-                newSize.X = 640;
+                newSize.X = targetWidth;
             }
 
-            if (newSize.Y < 480)
+            if (newSize.Y < targetHeight)
             {
-                newSize.Y = 480;
+                newSize.Y = targetHeight;
             }
 
             //Resize();
@@ -284,7 +291,7 @@ namespace ClassicUO.Game.UI.Gumps
 
     internal class BorderControl : Control
     {
-        private readonly int _borderSize;
+        public int BorderSize { get; internal set; }
 
         const ushort H_BORDER = 0x0A8C;
         const ushort V_BORDER = 0x0A8D;
@@ -295,14 +302,14 @@ namespace ClassicUO.Game.UI.Gumps
             Y = y;
             Width = w;
             Height = h;
-            _borderSize = borderSize;
+            BorderSize = borderSize;
             CanMove = true;
             AcceptMouseInput = true;
         }
 
         public ushort Hue { get; set; }
 
-        public override bool Draw(UltimaBatcher2D batcher, int x, int y)
+        public override bool AddToRenderLists(RenderLists renderLists, int x, int y, ref float layerDepthRef)
         {
             Vector3 hueVector = ShaderHueTranslator.GetHueVector(0);
 
@@ -311,48 +318,59 @@ namespace ClassicUO.Game.UI.Gumps
                 hueVector.X = Hue;
                 hueVector.Y = 1;
             }
+            float layerDepth = layerDepthRef;
 
-            ref readonly var gumpInfo = ref Client.Game.UO.Gumps.GetGump(H_BORDER);
+            renderLists.AddGumpWithAtlas(
+                (batcher) =>
+                {
+                    ref readonly var gumpInfo = ref Client.Game.UO.Gumps.GetGump(H_BORDER);
 
-            // sopra
-            batcher.DrawTiled(
-                gumpInfo.Texture,
-                new Rectangle(x, y, Width, _borderSize),
-                gumpInfo.UV,
-                hueVector
+                    // sopra
+                    batcher.DrawTiled(
+                        gumpInfo.Texture,
+                        new Rectangle(x, y, Width, BorderSize),
+                        gumpInfo.UV,
+                        hueVector,
+                        layerDepth
+                    );
+
+                    // sotto
+                    batcher.DrawTiled(
+                        gumpInfo.Texture,
+                        new Rectangle(x, y + Height - BorderSize, Width, BorderSize),
+                        gumpInfo.UV,
+                        hueVector,
+                        layerDepth
+                    );
+
+                    gumpInfo = ref Client.Game.UO.Gumps.GetGump(V_BORDER);
+                    //sx
+                    batcher.DrawTiled(
+                        gumpInfo.Texture,
+                        new Rectangle(x, y, BorderSize, Height),
+                        gumpInfo.UV,
+                        hueVector,
+                        layerDepth
+                    );
+
+                    //dx
+                    batcher.DrawTiled(
+                        gumpInfo.Texture,
+                        new Rectangle(
+                            x + Width - BorderSize,
+                            y + (gumpInfo.UV.Width >> 1),
+                            BorderSize,
+                            Height - BorderSize
+                        ),
+                        gumpInfo.UV,
+                        hueVector,
+                        layerDepth
+                    );
+                    return true;
+                }
             );
 
-            // sotto
-            batcher.DrawTiled(
-                gumpInfo.Texture,
-                new Rectangle(x, y + Height - _borderSize, Width, _borderSize),
-                gumpInfo.UV,
-                hueVector
-            );
-
-            gumpInfo = ref Client.Game.UO.Gumps.GetGump(V_BORDER);
-            //sx
-            batcher.DrawTiled(
-                gumpInfo.Texture,
-                new Rectangle(x, y, _borderSize, Height),
-                gumpInfo.UV,
-                hueVector
-            );
-
-            //dx
-            batcher.DrawTiled(
-                gumpInfo.Texture,
-                new Rectangle(
-                    x + Width - _borderSize,
-                    y + (gumpInfo.UV.Width >> 1),
-                    _borderSize,
-                    Height - _borderSize
-                ),
-                gumpInfo.UV,
-                hueVector
-            );
-
-            return base.Draw(batcher, x, y);
+            return base.AddToRenderLists(renderLists, x, y, ref layerDepthRef);
         }
     }
 }

@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+using ClassicUO.Assets;
 using ClassicUO.Configuration;
 using ClassicUO.Game.Data;
 using ClassicUO.Game.GameObjects;
@@ -11,13 +8,16 @@ using ClassicUO.Game.Managers;
 using ClassicUO.Game.Scenes;
 using ClassicUO.Game.UI.Controls;
 using ClassicUO.Input;
-using ClassicUO.Assets;
 using ClassicUO.Network;
 using ClassicUO.Renderer;
 using ClassicUO.Resources;
 using ClassicUO.Utility;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace ClassicUO.Game.UI.Gumps
 {
@@ -51,7 +51,7 @@ namespace ClassicUO.Game.UI.Gumps
 
 
         //counters
-        private Checkbox _enableCounters, _highlightOnUse, _highlightOnAmount, _enableAbbreviatedAmount;
+        private Checkbox _enableCounters, _highlightOnChange, _highlightOnAmount, _enableAbbreviatedAmount;
         private Checkbox _enableDragSelect, _dragSelectHumanoidsOnly, _dragSelectHostileOnly;
 
         // sounds
@@ -61,6 +61,9 @@ namespace ClassicUO.Game.UI.Gumps
         private FontSelector _fontSelectorChat;
         private Checkbox _forceUnicodeJournal;
         private InputField _gameWindowHeight;
+        private Checkbox _maxJournalFilesEnabled;
+        private InputField _maxJournalFiles;
+        private Checkbox _journalFileWithSerial;
 
         private Checkbox _gameWindowLock, _gameWindowFullsize;
         // GameWindowPosition
@@ -147,7 +150,7 @@ namespace ClassicUO.Game.UI.Gumps
         private Checkbox _showStatsMessage, _showSkillsMessage;
         private HSliderBar _showSkillsMessageDelta;
 
-
+        private GlobalProfile _globalProfile = ProfileManager.GlobalProfile;
         private Profile _currentProfile = ProfileManager.CurrentProfile;
 
         public OptionsGump(World world) : base(world, 0, 0)
@@ -2436,6 +2439,61 @@ namespace ClassicUO.Game.UI.Gumps
                 World.Journal.CloseWriter();
             }
 
+            startX += 40;
+
+            _maxJournalFilesEnabled = AddCheckBox
+            (
+                rightArea,
+                ResGumps.MaxJournalFiles,
+                _globalProfile.MaxJournalFiles >= 0,
+                startX,
+                startY
+            );
+
+            startX += _maxJournalFilesEnabled.Width + 5;
+
+            _maxJournalFiles = AddInputField
+            (
+                rightArea,
+                startX,
+                startY,
+                50,
+                TEXTBOX_HEIGHT,
+                null,
+                50,
+                false,
+                true,
+                999
+            );
+
+            if (_globalProfile.MaxJournalFiles < 0)
+            {
+                // if the checkbox is unchecked, we set the value of the input field to 100
+                // so when the user checks it, there's a sensible default value.
+                _maxJournalFiles.SetText("100");
+            }
+            else
+            {
+                _maxJournalFiles.SetText(_globalProfile.MaxJournalFiles.ToString());
+            }
+
+            startX = 5;
+
+            startX += 40;
+            startY += _maxJournalFiles.Height + 2 + 5;
+
+            _journalFileWithSerial = AddCheckBox
+            (
+                rightArea,
+                ResGumps.JournalFileWithSerial,
+                _globalProfile.JournalFileWithSerial,
+                startX,
+                startY
+            );
+
+            startX = 5;
+            startY += _journalFileWithSerial.Height + 2 + 5;
+
             _chatAfterEnter = AddCheckBox
             (
                 rightArea,
@@ -2938,16 +2996,16 @@ namespace ClassicUO.Game.UI.Gumps
             startX += 40;
             startY += _enableCounters.Height + 2;
 
-            _highlightOnUse = AddCheckBox
+            _highlightOnChange = AddCheckBox
             (
                 rightArea,
-                ResGumps.HighlightOnUse,
-                _currentProfile.CounterBarHighlightOnUse,
+                ResGumps.HighlightOnChange,
+                _currentProfile.CounterBarHighlightOnChange,
                 startX,
                 startY
             );
 
-            startY += _highlightOnUse.Height + 2;
+            startY += _highlightOnChange.Height + 2;
 
             _enableAbbreviatedAmount = AddCheckBox
             (
@@ -3018,7 +3076,6 @@ namespace ClassicUO.Game.UI.Gumps
             startY += text.Height + 2;
             text = AddLabel(rightArea, ResGumps.CellSize, startX, startY);
 
-            int initialX = startX;
             startX += text.Width + 5;
 
             _cellSize = AddHSlider
@@ -3031,46 +3088,6 @@ namespace ClassicUO.Game.UI.Gumps
                 startY,
                 80
             );
-
-
-            startX = initialX;
-            startY += text.Height + 2 + 15;
-
-            _rows = AddInputField
-            (
-                rightArea,
-                startX,
-                startY,
-                50,
-                30,
-                ResGumps.Counter_Rows,
-                50,
-                false,
-                true,
-                30
-            );
-
-            _rows.SetText(_currentProfile.CounterBarRows.ToString());
-
-
-            startX += _rows.Width + 5 + 100;
-
-            _columns = AddInputField
-            (
-                rightArea,
-                startX,
-                startY,
-                50,
-                30,
-                ResGumps.Counter_Columns,
-                50,
-                false,
-                true,
-                30
-            );
-
-            _columns.SetText(_currentProfile.CounterBarColumns.ToString());
-
 
             Add(rightArea, PAGE);
         }
@@ -3698,7 +3715,7 @@ namespace ClassicUO.Game.UI.Gumps
 
                 case 9: // counters
                     _enableCounters.IsChecked = false;
-                    _highlightOnUse.IsChecked = false;
+                    _highlightOnChange.IsChecked = false;
                     _enableAbbreviatedAmount.IsChecked = false;
                     _columns.SetText("1");
                     _rows.SetText("1");
@@ -3904,6 +3921,25 @@ namespace ClassicUO.Game.UI.Gumps
             _currentProfile.SaveJournalToFile = _saveJournalCheckBox.IsChecked;
             _currentProfile.OverheadPartyMessages = _partyMessagesOverhead.IsChecked;
 
+            if (!_maxJournalFilesEnabled.IsChecked)
+            {
+                // if the checkbox is unchecked, ignore the input field and set to -1 (unlimited)
+                _globalProfile.MaxJournalFiles = -1;
+            }
+            else
+            {
+                if (int.TryParse(_maxJournalFiles.Text, out int maxJournalFiles))
+                {
+                    _globalProfile.MaxJournalFiles = maxJournalFiles;
+                }
+                else
+                {
+                    _globalProfile.MaxJournalFiles = -1;
+                }
+            }
+
+            _globalProfile.JournalFileWithSerial = _journalFileWithSerial.IsChecked;
+
             // video
             _currentProfile.EnableDeathScreen = _enableDeathScreen.IsChecked;
             _currentProfile.EnableBlackWhiteEffect = _enableBlackWhiteEffect.IsChecked;
@@ -3944,7 +3980,9 @@ namespace ClassicUO.Game.UI.Gumps
             {
                 if (vp != null)
                 {
-                    Point n = vp.ResizeGameWindow(new Point(gameWindowSizeWidth, gameWindowSizeHeight));
+                    var s = new Point(Client.Game.ScaleWithDpi(gameWindowSizeWidth), Client.Game.ScaleWithDpi(gameWindowSizeHeight));
+
+                    Point n = vp.ResizeGameWindow(s);
 
                     _gameWindowWidth.SetText(n.X.ToString());
                     _gameWindowHeight.SetText(n.Y.ToString());
@@ -3981,7 +4019,8 @@ namespace ClassicUO.Game.UI.Gumps
                 {
                     if (vp != null)
                     {
-                        n = vp.ResizeGameWindow(new Point(Client.Game.Window.ClientBounds.Width, Client.Game.Window.ClientBounds.Height));
+                        var size = new Point(Client.Game.Window.ClientBounds.Width, Client.Game.Window.ClientBounds.Height);
+                        n = vp.ResizeGameWindow(size);
                         vp.SetGameWindowPosition(new Point(-5, -5));
                         _currentProfile.GameWindowPosition = vp.Location;
                     }
@@ -4086,23 +4125,9 @@ namespace ClassicUO.Game.UI.Gumps
             _currentProfile.CounterBarEnabled = _enableCounters.IsChecked;
             _currentProfile.CounterBarCellSize = _cellSize.Value;
 
-            if (!int.TryParse(_rows.Text, out int v))
-            {
-                v = 1;
-                _rows.SetText("1");
-            }
+            _currentProfile.CounterBarHighlightOnChange = _highlightOnChange.IsChecked;
 
-            _currentProfile.CounterBarRows = v;
-
-            if (!int.TryParse(_columns.Text, out v))
-            {
-                v = 1;
-                _columns.SetText("1");
-            }
-            _currentProfile.CounterBarColumns = v;
-            _currentProfile.CounterBarHighlightOnUse = _highlightOnUse.IsChecked;
-
-            if (!int.TryParse(_highlightAmount.Text, out v))
+            if (!int.TryParse(_highlightAmount.Text, out int v))
             {
                 v = 5;
                 _highlightAmount.SetText("5");
@@ -4120,9 +4145,6 @@ namespace ClassicUO.Game.UI.Gumps
 
             CounterBarGump counterGump = UIManager.GetGump<CounterBarGump>();
 
-            counterGump?.SetLayout(_currentProfile.CounterBarCellSize, _currentProfile.CounterBarRows, _currentProfile.CounterBarColumns);
-
-
             if (before != _currentProfile.CounterBarEnabled)
             {
                 if (counterGump == null)
@@ -4136,9 +4158,7 @@ namespace ClassicUO.Game.UI.Gumps
                                 World,
                                 200,
                                 200,
-                                _currentProfile.CounterBarCellSize,
-                                _currentProfile.CounterBarRows,
-                                _currentProfile.CounterBarColumns
+                                _currentProfile.CounterBarCellSize
                             )
                         );
                     }
@@ -4314,34 +4334,41 @@ namespace ClassicUO.Game.UI.Gumps
             _gameWindowHeight.SetText(camera.Bounds.Height.ToString());
         }
 
-        public override bool Draw(UltimaBatcher2D batcher, int x, int y)
+        public override bool AddToRenderLists(RenderLists renderLists, int x, int y, ref float layerDepthRef)
         {
+            float layerDepth = layerDepthRef;
             Vector3 hueVector = ShaderHueTranslator.GetHueVector(0);
 
-            batcher.Draw
-            (
-                LogoTexture,
-                new Rectangle
+            renderLists.AddGumpNoAtlas(batcher =>
+            {
+                batcher.Draw
                 (
-                    x + 190,
-                    y + 20,
-                    WIDTH - 250,
-                    400
-                ),
-                hueVector
-            );
+                    LogoTexture,
+                    new Rectangle
+                    (
+                        x + 190,
+                        y + 20,
+                        WIDTH - 250,
+                        400
+                    ),
+                    hueVector,
+                    layerDepth
+                );
 
-            batcher.DrawRectangle
-            (
-                SolidColorTextureCache.GetTexture(Color.Gray),
-                x,
-                y,
-                Width,
-                Height,
-                hueVector
-            );
+                batcher.DrawRectangle
+                (
+                    SolidColorTextureCache.GetTexture(Color.Gray),
+                    x,
+                    y,
+                    Width,
+                    Height,
+                    hueVector,
+                    layerDepth
+                );
+                return true;
+            });
 
-            return base.Draw(batcher, x, y);
+            return base.AddToRenderLists(renderLists, x, y, ref layerDepthRef);
         }
 
         private InputField AddInputField
@@ -4772,15 +4799,21 @@ namespace ClassicUO.Game.UI.Gumps
                 Add(_textbox);
             }
 
-            public override bool Draw(UltimaBatcher2D batcher, int x, int y)
+            public override bool AddToRenderLists(RenderLists renderLists, int x, int y, ref float layerDepthRef)
             {
-                if (batcher.ClipBegin(x, y, Width, Height))
+                float layerDepth = layerDepthRef;
+                renderLists.AddGumpNoAtlas(batcher =>
                 {
-                    base.Draw(batcher, x, y);
+                    if (batcher.ClipBegin(x, y, Width, Height))
+                    {
+                        RenderLists childRenderLists = new();
+                        base.AddToRenderLists(childRenderLists, x, y, ref layerDepth);
 
-                    batcher.ClipEnd();
-                }
-
+                        childRenderLists.DrawRenderLists(batcher, sbyte.MaxValue);
+                        batcher.ClipEnd();
+                    }
+                    return true;
+                });
                 return true;
             }
 

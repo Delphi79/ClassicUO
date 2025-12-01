@@ -5,14 +5,11 @@ using ClassicUO.Configuration;
 using ClassicUO.Game;
 using ClassicUO.Game.Data;
 using ClassicUO.IO;
-using ClassicUO.Network;
-using ClassicUO.Network.Encryption;
 using ClassicUO.Resources;
 using ClassicUO.Utility;
 using ClassicUO.Utility.Logging;
-using ClassicUO.Utility.Platforms;
 using Microsoft.Xna.Framework.Graphics;
-using SDL2;
+using SDL3;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -94,7 +91,7 @@ namespace ClassicUO
             LightColors.LoadLights();
 
             World = new World();
-            GameCursor = new GameCursor(World);
+            GameCursor = new GameCursor(World, game.DpiScale);
         }
 
         public void Unload()
@@ -187,7 +184,9 @@ namespace ClassicUO
             Log.Trace($"Client version: {clientVersion}");
             Log.Trace($"Protocol: {Protocol}");
 
-            FileManager = new UOFileManager(clientVersion, clientPath);
+            var filesOverride = new UOFilesOverrideMap(Settings.GlobalSettings.OverrideFile);
+            filesOverride.Load();
+            FileManager = new UOFileManager(clientVersion, clientPath, filesOverride);
             FileManager.Load(Settings.GlobalSettings.UseVerdata, Settings.GlobalSettings.Language, Settings.GlobalSettings.MapsLayouts);
 
             StaticFilters.Load(FileManager.TileData);
