@@ -67,6 +67,21 @@ namespace ClassicUO
         public UltimaOnline UO { get; } = new UltimaOnline();
         public IPluginHost PluginHost { get; private set; }
         public GraphicsDeviceManager GraphicManager { get; }
+
+        public Rectangle ClientBounds
+        {
+            get
+            {
+                var window_rectangle = Window.ClientBounds;
+                return new Rectangle(
+                    window_rectangle.X,
+                    window_rectangle.Y,
+                    (int)((float)(window_rectangle.Width) / DpiScale),
+                    (int)((float)(window_rectangle.Height) / DpiScale)
+                );
+            }
+        }
+
         public readonly uint[] FrameDelay = new uint[2];
 
         private readonly List<(uint, Action)> _queuedActions = new ();
@@ -512,9 +527,20 @@ namespace ClassicUO
             base.Draw(gameTime);
         }
 
+        private float _screenScale = Settings.GlobalSettings.ScreenScale;
+        public float ScreenScale {
+            get => _screenScale;
+            set {
+                if (value != _screenScale) {
+                    _screenScale = value;
+                    UO.GameCursor?.CreateGraphic(DpiScale);
+                }
+            }
+        }
+
         public float DpiScale
         {
-            get => SDL_GetWindowDisplayScale(Window.Handle);
+            get => SDL_GetWindowDisplayScale(Window.Handle) * ScreenScale;
         }
 
         public int ScaleWithDpi(int value)
